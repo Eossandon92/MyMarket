@@ -1,6 +1,5 @@
-
 import click
-from api.models import db, User
+from api.models import db, User, Product
 
 """
 In this file, you can add as many commands as you want using the @app.cli.command decorator
@@ -31,4 +30,26 @@ def setup_commands(app):
 
     @app.cli.command("insert-test-data")
     def insert_test_data():
-        pass
+        print("Inserting test products...")
+        products = [
+            {"name": "Coca Cola 3L", "price": 3000, "category": "Bebidas", "stock": 50, "image_url": "https://img.freepik.com/premium-vector/coca-cola-bottle-vector-illustration-isolated-white-background_190024-526.jpg"},
+            {"name": "Sprite 3L", "price": 2800, "category": "Bebidas", "stock": 40, "image_url": "https://img.freepik.com/premium-vector/sprite-bottle-vector-illustration-isolated-white-background_190024-525.jpg"},
+            {"name": "Papas Lays Clásicas", "price": 1500, "category": "Snacks", "stock": 100, "image_url": "https://img.freepik.com/premium-photo/bag-lays-chips-on-white-background_644342-1243.jpg"},
+            {"name": "Doritos Queso", "price": 1600, "category": "Snacks", "stock": 80, "image_url": "https://img.freepik.com/free-vector/package-doritos-chips_1308-111082.jpg"},
+            {"name": "Leche Soprole Entera 1L", "price": 1100, "category": "Lácteos", "stock": 30, "image_url": "https://img.freepik.com/free-vector/milk-box-packaging-realistic-design_1284-21397.jpg"},
+            {"name": "Queso Gouda Laminado", "price": 2500, "category": "Lácteos", "stock": 25, "image_url": "https://img.freepik.com/free-photo/pieces-delicious-cheese_144627-22002.jpg"},
+            {"name": "Pan de Molde Castaño", "price": 2200, "category": "Abarrotes", "stock": 20, "image_url": "https://img.freepik.com/free-photo/bread-slices-white-background_1150-16447.jpg"},
+            {"name": "Galletas Tritón", "price": 1000, "category": "Snacks", "stock": 60, "image_url": "https://img.freepik.com/free-photo/chocolate-cookies-with-cream-filling_114579-2041.jpg"},
+        ]
+
+        for p in products:
+            new_prod = Product(
+                name=p["name"],
+                price=p["price"],
+                category=p["category"],
+                stock=p["stock"],
+                image_url=p["image_url"]
+            )
+            db.session.add(new_prod)
+        db.session.commit()
+        print("Test products inserted successfully.")
