@@ -2,6 +2,7 @@ import React from "react";
 import { LayoutDashboard, ShoppingBag, Coffee, Apple, Settings, User, Tag, BarChart2, Calculator } from "lucide-react";
 import { Link } from "react-router-dom";
 import { NotificationBell } from "./NotificationBell";
+import { PlusCircle } from "lucide-react";
 
 export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
     // Map icons creatively based on category names
@@ -19,7 +20,7 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
                 <div className="sidebar-logo-icon">
                     <ShoppingBag size={24} />
                 </div>
-                <h2>FreshMarket</h2>
+                <h2>ALMARA</h2>
             </div>
 
             <div className="nav-section-title">Categorías</div>
@@ -43,6 +44,12 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
                     <button className="touch-btn category-btn">
                         <ShoppingBag size={20} />
                         <span>Productos</span>
+                    </button>
+                </Link>
+                <Link to="/admin/add-stock" style={{ textDecoration: 'none', marginTop: '0.5rem' }}>
+                    <button className="touch-btn category-btn">
+                        <PlusCircle size={20} />
+                        <span>Ingreso Mercadería</span>
                     </button>
                 </Link>
                 <Link to="/admin/categories" style={{ textDecoration: 'none', marginTop: '0.5rem' }}>

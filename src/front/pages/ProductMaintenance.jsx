@@ -178,16 +178,17 @@ export const ProductMaintenance = () => {
         ...prev,
         barcode: code,
         name: fullName,
-        image_url: info.image_url || prev.image_url,
         category: prev.category || info.category || prev.category,
-        description: prev.description || autoDesc
+        description: prev.description || autoDesc,
+        // Conservamos temporalmente la URL anterior hasta que la IA traiga la nueva
+        image_url: prev.image_url || ""
       }));
       const extra = [info.brand && `Marca: ${info.brand}`, info.quantity && `Gramaje: ${info.quantity}`].filter(Boolean).join(" · ");
       setScannerFeedback(`✅ ${fullName}${extra ? " — " + extra : ""}`);
 
-      // Siempre buscar imagen con el robot IA (ignora la imagen de Open Food Facts)
-      setScannerFeedback(f => f + " · 🎨 Buscando imagen...");
-      handleGenerateImage(fullName);
+      // Siempre buscar imagen con el robot IA primero. Si falla o no encuentra, que use fallbackUrl (info.image_url)
+      setScannerFeedback(f => f + " · 🎨 Buscando imagen mediante IA...");
+      handleGenerateImage(fullName, info.image_url);
     } else {
       setScannerFeedback(`⚠️ Código ${code} no encontrado — completa manualmente.`);
     }
@@ -258,7 +259,7 @@ export const ProductMaintenance = () => {
     setEditingId(null);
   };
 
-  const handleGenerateImage = async (nameOverride) => {
+  const handleGenerateImage = async (nameOverride, fallbackUrl = "") => {
     const nameToUse = nameOverride || formData.name;
     if (!nameToUse) {
       alert("Por favor ingresa un nombre de producto primero.");
@@ -275,13 +276,20 @@ export const ProductMaintenance = () => {
 
       if (response.ok) {
         const data = await response.json();
-        setFormData(prev => ({ ...prev, image_url: data.image_url }));
+        // Si la IA devolvió el placeholder de error/no encontrado, priorizamos la imagen de la BD (OpenFoodFacts) si existe
+        if (data.image_url && data.image_url.includes("placehold.co") && fallbackUrl) {
+          setFormData(prev => ({ ...prev, image_url: fallbackUrl }));
+        } else {
+          setFormData(prev => ({ ...prev, image_url: data.image_url }));
+        }
       } else {
         if (!nameOverride) alert("Error al intentar generar la imagen con IA.");
+        if (fallbackUrl) setFormData(prev => ({ ...prev, image_url: fallbackUrl }));
       }
     } catch (error) {
       console.error("Error generating image:", error);
       if (!nameOverride) alert("Error de red al conectar con el servidor para la imagen.");
+      if (fallbackUrl) setFormData(prev => ({ ...prev, image_url: fallbackUrl }));
     } finally {
       setIsGenerating(false);
     }
@@ -506,7 +514,7 @@ export const ProductMaintenance = () => {
                   <button type="button" className="btn-close" onClick={closeModal}></button>
                 </div>
                 <form onSubmit={handleSubmit}>
-                  <div className="modal-body">
+                  <div className="modal-body" style={{ maxHeight: "75vh", overflowY: "auto", overflowX: "hidden", paddingRight: "10px" }}>
                     <div className="mb-3">
                       <label className="form-label">Nombre del Producto</label>
                       <input
@@ -535,6 +543,7 @@ export const ProductMaintenance = () => {
                         ))}
                       </select>
                     </div>
+
                     <div className="row" style={{ alignItems: "flex-end" }}>
                       <div className="col-md-4 mb-3">
                         <label className="form-label">Precio</label>
@@ -572,13 +581,14 @@ export const ProductMaintenance = () => {
                         />
                       </div>
                     </div>
+
                     <div className="mb-3">
                       <label className="form-label d-flex align-items-center gap-2">
                         <Scan size={16} />
                         Código de Barras
                         {isLookingUp && (
                           <span style={{ fontSize: "0.78rem", color: "#0ea5e9", fontWeight: 600 }}>
-                            🔍 Consultando base de datos...
+                            🔍 Consultando...
                           </span>
                         )}
                         {!isLookingUp && scannerFeedback && (
@@ -599,7 +609,7 @@ export const ProductMaintenance = () => {
                         name="barcode"
                         value={formData.barcode}
                         onChange={handleInputChange}
-                        placeholder="Escanea con el lector o escribe manualmente"
+                        placeholder="Escanea o escribe manually..."
                       />
                       <small className="form-text text-muted">
                         Apunta el lector de barras al producto mientras este modal esté abierto.
@@ -622,12 +632,29 @@ export const ProductMaintenance = () => {
                           onClick={() => handleGenerateImage()}
                           disabled={isGenerating || !formData.name}
                         >
-                          {isGenerating ? "Generando..." : "✨ IA"}
+                          {isGenerating ? "Cargando..." : "✨ IA"}
                         </button>
                       </div>
                       <small className="form-text text-muted">
-                        Escribe el nombre del producto primero y presiona el botón ✨ IA para autocompletar la foto.
+                        Escribe nombre primero y autocompleta.
                       </small>
+
+                      {formData.image_url && (
+                        <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", background: "#f8fafc", padding: "0.75rem", borderRadius: "10px", border: "1px dashed #cbd5e1" }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ margin: "0 0 0.25rem 0", fontSize: "0.85rem", color: "#64748b", fontWeight: 700 }}>Miniatura Cargada</p>
+                            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {formData.image_url}
+                            </p>
+                          </div>
+                          <img
+                            src={formData.image_url}
+                            alt="Previsualización del Producto"
+                            style={{ flexShrink: 0, width: "60px", height: "60px", objectFit: "contain", borderRadius: "6px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", background: "white", padding: "2px" }}
+                            onError={(e) => { e.target.style.display = "none"; }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="modal-footer">

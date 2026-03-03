@@ -8,6 +8,9 @@ from flask_cors import CORS
 import os
 import requests
 from bs4 import BeautifulSoup
+from google import genai
+from thefuzz import process, fuzz
+import json
 
 api = Blueprint('api', __name__)
 
@@ -59,12 +62,11 @@ def generate_image():
                 for a in a_tags:
                     m_data = a.get('m')
                     if m_data:
-                        import json
                         try:
-                            # It's a JSON string, grab the 'murl'
+                            # Use 'turl' (Thumbnail URL proxyed by Bing) to avoid 403 Forbidden hotlink blocks from murl
                             data = json.loads(m_data)
-                            image_url = data.get('murl')
-                            if image_url and image_url.startswith('http'):
+                            image_url = data.get('turl')
+                            if image_url:
                                 return jsonify({"image_url": image_url}), 200
                         except:
                             pass
@@ -197,9 +199,8 @@ def delete_product(id):
     if not product:
         return jsonify({"msg": "Product not found"}), 404
 
-    # Warning: In a real POS, you might want to mark it as inactive 
-    # instead of deleting it if it already has sales associated.
-    # For now, we will perform a hard delete.
+    # Eliminar primero los order_items asociados para evitar ForeignKeyViolation
+    OrderItem.query.filter_by(product_id=id).delete()
     db.session.delete(product)
     db.session.commit()
     
@@ -415,4 +416,121 @@ def close_cash_register():
     except Exception as e:
         db.session.rollback()
         print("Error saving cash session:", str(e))
+        return jsonify({"msg": "Internal server error"}), 500
+
+@api.route('/inventory/scan-invoice', methods=['POST'])
+def scan_invoice():
+    if 'file' not in request.files:
+        return jsonify({"msg": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"msg": "No selected file"}), 400
+
+    if file:
+        try:
+            image_bytes = file.read()
+            
+            gemini_api_key = os.environ.get("GEMINI_API_KEY")
+            if not gemini_api_key:
+                return jsonify({"msg": "GEMINI_API_KEY is missing"}), 500
+                
+            client = genai.Client(api_key=gemini_api_key)
+            
+            prompt = """
+            Eres un asistente contable súper rápido. Lee esta factura y devuélveme un JSON estricto con una lista de los productos cobrados (solo `nombre_factura`, `cantidad` y `precio_unitario`). Ignora subtotales e impuestos. El resultado DEBE ser un array de objetos JSON y NADA MAS sin formato markdown extra. Ejemplo:
+            [
+              {"nombre_factura": "CC 3L NR TP", "cantidad": 12, "precio_unitario": 2000}
+            ]
+            """
+            
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=[
+                    prompt,
+                    genai.types.Part.from_bytes(
+                        data=image_bytes,
+                        mime_type=file.mimetype,
+                    )
+                ]
+            )
+            
+            text = response.text.strip()
+            if text.startswith('```json'):
+                text = text[7:]
+            if text.startswith('```'):
+                text = text[3:]
+            if text.endswith('```'):
+                text = text[:-3]
+            text = text.strip()
+            
+            items = json.loads(text)
+            
+            all_products = Product.query.all()
+            product_dict = {p.id: p.name for p in all_products}
+            product_names = list(product_dict.values())
+            
+            results = []
+            for item in items:
+                nombre = item.get("nombre_factura", "")
+                qty = item.get("cantidad", 0)
+                precio = item.get("precio_unitario", 0)
+                
+                if product_names and nombre:
+                    best_match, score = process.extractOne(nombre, product_names, scorer=fuzz.token_sort_ratio)
+                    
+                    matched_id = None
+                    for pid, pname in product_dict.items():
+                        if pname == best_match:
+                            matched_id = pid
+                            break
+                    
+                    confidence = "high" if score > 75 else ("medium" if score > 50 else "low")
+                else:
+                    best_match = None
+                    matched_id = None
+                    confidence = "none"
+                
+                results.append({
+                    "invoice_item": nombre,
+                    "invoice_qty": qty,
+                    "invoice_price": precio,
+                    "predicted_product_id": matched_id,
+                    "predicted_product_name": best_match,
+                    "confidence": confidence
+                })
+                
+            return jsonify({"items": results}), 200
+            
+        except Exception as e:
+            print("Error parsing invoice with Gemini: ", e)
+            return jsonify({"msg": "Error processing document with AI", "error": str(e)}), 500
+
+@api.route('/inventory/bulk-add', methods=['POST'])
+def bulk_add_inventory():
+    data = request.json
+    if not data or 'items' not in data:
+        return jsonify({"msg": "No items provided"}), 400
+        
+    items = data['items']
+    updated_products = []
+    
+    try:
+        for item in items:
+            product_id = item.get('product_id')
+            qty_to_add = item.get('qty_to_add', 0)
+            
+            if not product_id or qty_to_add <= 0:
+                continue
+                
+            product = Product.query.get(product_id)
+            if product:
+                product.stock += qty_to_add
+                updated_products.append(product.serialize())
+                
+        db.session.commit()
+        return jsonify({"msg": "Stock updated successfully", "updated": updated_products}), 200
+    except Exception as e:
+        db.session.rollback()
+        print("Error bulk updating stock:", str(e))
         return jsonify({"msg": "Internal server error"}), 500

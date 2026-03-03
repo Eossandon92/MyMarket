@@ -26,6 +26,9 @@ beautifulsoup4 = "*"
 google-api-python-client = "*"
 colorama = "*"
 sqlalchemy = "*"
+pillow = "*"
+thefuzz = "*"
+google-genai = "*"
 
 [requires]
 python_version = "3.13"

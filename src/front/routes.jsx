@@ -10,6 +10,7 @@ import { ProductMaintenance } from "./pages/ProductMaintenance";
 import { CategoryMaintenance } from "./pages/CategoryMaintenance";
 import { Reports } from "./pages/Reports";
 import { CashRegister } from "./pages/CashRegister";
+import { AddStock } from "./pages/AddStock";
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -21,6 +22,7 @@ export const router = createBrowserRouter(
       <Route path="/admin/categories" element={<CategoryMaintenance />} />
       <Route path="/admin/reports" element={<Reports />} />
       <Route path="/admin/cash-register" element={<CashRegister />} />
+      <Route path="/admin/add-stock" element={<AddStock />} />
     </Route>
   )
 );
