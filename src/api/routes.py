@@ -2,7 +2,8 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 from flask import Flask, request, jsonify, url_for, Blueprint
-from api.models import db, User, Product, Order, OrderItem, Category, CashSession
+from api.models import db, User, Product, Order, OrderItem, Category, CashSession, Business
+from werkzeug.security import generate_password_hash, check_password_hash
 from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
 import os
@@ -30,6 +31,89 @@ def handle_hello():
     }
 
     return jsonify(response_body), 200
+
+# ─────────────────────────────────────────────
+# BUSINESS endpoints
+# ─────────────────────────────────────────────
+
+@api.route('/business', methods=['GET'])
+def get_businesses():
+    businesses = Business.query.order_by(Business.name.asc()).all()
+    return jsonify([b.serialize() for b in businesses]), 200
+
+@api.route('/business', methods=['POST'])
+def create_business():
+    data = request.json
+    if not data or 'name' not in data or 'slug' not in data:
+        return jsonify({"msg": "Missing required fields: name, slug"}), 400
+    if Business.query.filter_by(slug=data['slug']).first():
+        return jsonify({"msg": "Slug already in use"}), 400
+    business = Business(name=data['name'].strip(), slug=data['slug'].strip())
+    db.session.add(business)
+    db.session.commit()
+    return jsonify(business.serialize()), 201
+
+@api.route('/business/<int:id>', methods=['GET'])
+def get_business(id):
+    business = Business.query.get(id)
+    if not business:
+        return jsonify({"msg": "Business not found"}), 404
+    return jsonify(business.serialize()), 200
+
+
+# ─────────────────────────────────────────────
+# AUTH endpoints
+# ─────────────────────────────────────────────
+
+@api.route('/auth/register', methods=['POST'])
+def register():
+    data = request.json
+    required = ['business_id', 'name', 'email', 'password']
+    if not data or not all(k in data for k in required):
+        return jsonify({"msg": f"Missing fields: {required}"}), 400
+
+    business = Business.query.get(data['business_id'])
+    if not business:
+        return jsonify({"msg": "Business not found"}), 404
+
+    existing = User.query.filter_by(business_id=data['business_id'], email=data['email']).first()
+    if existing:
+        return jsonify({"msg": "Email already registered in this business"}), 400
+
+    user = User(
+        business_id=data['business_id'],
+        name=data['name'].strip(),
+        email=data['email'].strip().lower(),
+        password=generate_password_hash(data['password']),
+        role=data.get('role', 'cashier'),
+        is_active=True
+    )
+    db.session.add(user)
+    db.session.commit()
+    return jsonify(user.serialize()), 201
+
+@api.route('/auth/login', methods=['POST'])
+def login():
+    data = request.json
+    if not data or 'email' not in data or 'password' not in data or 'business_id' not in data:
+        return jsonify({"msg": "Missing email, password or business_id"}), 400
+
+    user = User.query.filter_by(
+        business_id=data['business_id'],
+        email=data['email'].strip().lower()
+    ).first()
+
+    if not user or not check_password_hash(user.password, data['password']):
+        return jsonify({"msg": "Invalid credentials"}), 401
+
+    if not user.is_active:
+        return jsonify({"msg": "User is inactive"}), 403
+
+    return jsonify({
+        "msg": "Login successful",
+        "user": user.serialize()
+    }), 200
+
 
 @api.route('/generate-image', methods=['POST'])
 def generate_image():
@@ -84,21 +168,23 @@ def generate_image():
 
 @api.route('/categories', methods=['GET'])
 def get_categories():
-    categories = Category.query.order_by(Category.name.asc()).all()
+    business_id = request.args.get('business_id', type=int)
+    if not business_id:
+        return jsonify({"msg": "Missing business_id query param"}), 400
+    categories = Category.query.filter_by(business_id=business_id).order_by(Category.name.asc()).all()
     return jsonify([category.serialize() for category in categories]), 200
 
 @api.route('/categories', methods=['POST'])
 def create_category():
     data = request.json
-    if not data or 'name' not in data:
-        return jsonify({"msg": "Missing category name"}), 400
+    if not data or 'name' not in data or 'business_id' not in data:
+        return jsonify({"msg": "Missing category name or business_id"}), 400
 
-    # Ensure unique category name (case-insensitive check could be good, but we just try insert)
-    existing = Category.query.filter_by(name=data['name'].strip()).first()
+    existing = Category.query.filter_by(business_id=data['business_id'], name=data['name'].strip()).first()
     if existing:
-        return jsonify({"msg": "Category already exists"}), 400
+        return jsonify({"msg": "Category already exists in this business"}), 400
 
-    new_category = Category(name=data['name'].strip())
+    new_category = Category(business_id=data['business_id'], name=data['name'].strip())
     db.session.add(new_category)
     db.session.commit()
 
@@ -135,12 +221,19 @@ def delete_category(id):
 
 @api.route('/products', methods=['GET'])
 def get_products():
-    products = Product.query.order_by(Product.id.asc()).all()
+    business_id = request.args.get('business_id', type=int)
+    if not business_id:
+        return jsonify({"msg": "Missing business_id query param"}), 400
+    products = Product.query.filter_by(business_id=business_id).order_by(Product.id.asc()).all()
     return jsonify([product.serialize() for product in products]), 200
 
 @api.route('/products/barcode/<string:barcode>', methods=['GET'])
 def get_product_by_barcode(barcode):
-    product = Product.query.filter_by(barcode=barcode).first()
+    business_id = request.args.get('business_id', type=int)
+    query = Product.query.filter_by(barcode=barcode)
+    if business_id:
+        query = query.filter_by(business_id=business_id)
+    product = query.first()
     if not product:
         return jsonify({"msg": "Product not found"}), 404
     return jsonify(product.serialize()), 200
@@ -148,10 +241,11 @@ def get_product_by_barcode(barcode):
 @api.route('/products', methods=['POST'])
 def create_product():
     data = request.json
-    if not data or 'name' not in data or 'price' not in data or 'category' not in data:
-        return jsonify({"msg": "Missing required fields: name, price, category"}), 400
+    if not data or 'name' not in data or 'price' not in data or 'category' not in data or 'business_id' not in data:
+        return jsonify({"msg": "Missing required fields: name, price, category, business_id"}), 400
 
     new_product = Product(
+        business_id=data['business_id'],
         name=data['name'],
         price=data['price'],
         category=data['category'],
@@ -209,8 +303,8 @@ def delete_product(id):
 @api.route('/orders', methods=['POST'])
 def create_order():
     data = request.json
-    if not data or 'items' not in data:
-        return jsonify({"msg": "No items provided in order"}), 400
+    if not data or 'items' not in data or 'business_id' not in data:
+        return jsonify({"msg": "Missing items or business_id"}), 400
 
     items_data = data['items']
     if not items_data or len(items_data) == 0:
@@ -218,7 +312,12 @@ def create_order():
         
     payment_method = data.get('payment_method', 'cash')
 
-    new_order = Order(total_price=0, payment_method=payment_method)
+    new_order = Order(
+        business_id=data['business_id'],
+        user_id=data.get('user_id'),
+        total_price=0,
+        payment_method=payment_method
+    )
     db.session.add(new_order)
     db.session.flush() # To get the order ID
 
@@ -256,8 +355,14 @@ def create_order():
 
 @api.route('/products/low-stock', methods=['GET'])
 def get_low_stock_products():
-    """Returns products where stock <= min_stock"""
-    products = Product.query.filter(Product.stock <= Product.min_stock).all()
+    """Returns products where stock <= min_stock, filtered by business"""
+    business_id = request.args.get('business_id', type=int)
+    if not business_id:
+        return jsonify({"msg": "Missing business_id query param"}), 400
+    products = Product.query.filter(
+        Product.business_id == business_id,
+        Product.stock <= Product.min_stock
+    ).all()
     return jsonify([p.serialize() for p in products]), 200
 
 
@@ -295,7 +400,12 @@ def get_sales_report():
     else:
         return jsonify({"msg": "Invalid period. Use: today, week, month, custom"}), 400
 
+    business_id = request.args.get('business_id', type=int)
+    if not business_id:
+        return jsonify({"msg": "Missing business_id query param"}), 400
+
     orders = Order.query.filter(
+        Order.business_id == business_id,
         Order.created_at >= start,
         Order.created_at <= end,
         Order.status == 'completed'
@@ -343,12 +453,17 @@ def cash_register_report():
     start_dt = datetime.combine(target_date, datetime.min.time())
     end_dt = datetime.combine(target_date, datetime.max.time())
 
+    business_id = request.args.get('business_id', type=int)
+    if not business_id:
+        return jsonify({"msg": "Missing business_id query param"}), 400
+
     # Get totals grouped by payment_method
     results = db.session.query(
         Order.payment_method, 
         func.sum(Order.total_price),
         func.count(Order.id)
     ).filter(
+        Order.business_id == business_id,
         Order.status == 'completed',
         Order.created_at >= start_dt,
         Order.created_at <= end_dt
@@ -370,7 +485,7 @@ def cash_register_report():
         summary["total_orders"] += count
 
     # Chequear si este día ya fue cerrado
-    session = CashSession.query.filter_by(date=date_str).first()
+    session = CashSession.query.filter_by(business_id=business_id, date=date_str).first()
     if session:
         return jsonify({
             "is_closed": True,
@@ -390,19 +505,23 @@ def close_cash_register():
         return jsonify({"msg": "Body is required"}), 400
 
     date_str = body.get('date')
+    business_id = body.get('business_id')
     starting_cash = body.get('starting_cash')
     counted_cash = body.get('counted_cash')
     counted_card = body.get('counted_card')
+    user_id = body.get('user_id')
 
-    if not date_str or starting_cash is None or counted_cash is None or counted_card is None:
-        return jsonify({"msg": "Missing fields"}), 400
+    if not date_str or not business_id or starting_cash is None or counted_cash is None or counted_card is None:
+        return jsonify({"msg": "Missing fields: date, business_id, starting_cash, counted_cash, counted_card"}), 400
 
     # Ensure it's not already closed
-    existing = CashSession.query.filter_by(date=date_str).first()
+    existing = CashSession.query.filter_by(business_id=business_id, date=date_str).first()
     if existing:
         return jsonify({"msg": "Cash register already closed for this date"}), 400
 
     new_session = CashSession(
+        business_id=business_id,
+        user_id=user_id,
         date=date_str,
         starting_cash=float(starting_cash),
         counted_cash=float(counted_cash),

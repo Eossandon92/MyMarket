@@ -4,6 +4,7 @@ import { ArrowLeft, Edit2, Trash2, PlusCircle, Scan, Search } from "lucide-react
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
 export const ProductMaintenance = () => {
+  const BUSINESS_ID = 1; // TODO: replace with value from auth context/session
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -199,7 +200,7 @@ export const ProductMaintenance = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/categories");
+      const response = await fetch(`http://localhost:3001/api/categories?business_id=${BUSINESS_ID}`);
       if (response.ok) {
         const data = await response.json();
         setCategories(data);
@@ -211,8 +212,7 @@ export const ProductMaintenance = () => {
 
   const fetchProducts = async () => {
     try {
-      // Assuming your Vite proxy or backend is running at localhost:3001
-      const response = await fetch("http://localhost:3001/api/products");
+      const response = await fetch(`http://localhost:3001/api/products?business_id=${BUSINESS_ID}`);
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -301,6 +301,7 @@ export const ProductMaintenance = () => {
     // Convert price and stock to numbers before sending
     const payload = {
       ...formData,
+      business_id: BUSINESS_ID,
       price: parseFloat(formData.price),
       stock: parseInt(formData.stock, 10)
     };

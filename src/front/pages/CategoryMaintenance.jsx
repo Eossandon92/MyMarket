@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { PlusCircle, Search, Edit2, Trash2, X, Tag, ArrowLeft } from "lucide-react";
 
 export const CategoryMaintenance = () => {
+    const BUSINESS_ID = 1; // TODO: replace with auth context/session value
     const [categories, setCategories] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,7 +18,7 @@ export const CategoryMaintenance = () => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch("http://localhost:3001/api/categories");
+            const response = await fetch(`http://localhost:3001/api/categories?business_id=${BUSINESS_ID}`);
             if (response.ok) {
                 const data = await response.json();
                 setCategories(data);
@@ -79,7 +80,7 @@ export const CategoryMaintenance = () => {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({ name: formData.name.trim() }),
+                body: JSON.stringify({ name: formData.name.trim(), business_id: BUSINESS_ID }),
             });
 
             if (response.ok) {

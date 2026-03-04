@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 const API = "http://localhost:3001/api";
+const BUSINESS_ID = 1; // TODO: replace with auth context/session value
 
 const PERIODS = [
     { id: "today", label: "Hoy" },
@@ -26,7 +27,7 @@ export const Reports = () => {
         setLoading(true);
         setError("");
         try {
-            let url = `${API}/reports/sales?period=${period}`;
+            let url = `${API}/reports/sales?period=${period}&business_id=${BUSINESS_ID}`;
             if (period === "custom") {
                 if (!dateFrom || !dateTo) { setError("Selecciona las fechas de inicio y fin."); setLoading(false); return; }
                 url += `&date_from=${dateFrom}&date_to=${dateTo}`;
