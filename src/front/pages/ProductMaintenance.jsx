@@ -609,8 +609,16 @@ export const ProductMaintenance = () => {
                         name="barcode"
                         value={formData.barcode}
                         onChange={handleInputChange}
-                        placeholder="Escanea o escribe manually..."
+                        placeholder="Escanea o escribe el código..."
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const code = formData.barcode.trim();
+                            if (code) handleBarcodeScan(code);
+                          }
+                        }}
                       />
+
                       <small className="form-text text-muted">
                         Apunta el lector de barras al producto mientras este modal esté abierto.
                       </small>
