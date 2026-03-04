@@ -1,26 +1,33 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Bell, AlertTriangle, X, Package } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const API = "http://localhost:3001/api";
 
 export const NotificationBell = () => {
+    const { businessId, token } = useAuth();
     const [lowStock, setLowStock] = useState([]);
     const [open, setOpen] = useState(false);
     const ref = useRef(null);
 
     const fetchLowStock = async () => {
         try {
-            const res = await fetch(`${API}/products/low-stock`);
+            if (!businessId || !token) return;
+            const res = await fetch(`${API}/products/low-stock?business_id=${businessId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
             if (res.ok) setLowStock(await res.json());
         } catch { }
     };
 
     useEffect(() => {
-        fetchLowStock();
-        const interval = setInterval(fetchLowStock, 60000); // refresca cada 1 min
-        return () => clearInterval(interval);
-    }, []);
+        if (businessId && token) {
+            fetchLowStock();
+            const interval = setInterval(fetchLowStock, 60000); // refresca cada 1 min
+            return () => clearInterval(interval);
+        }
+    }, [businessId, token]);
 
     // Cierra al hacer click fuera
     useEffect(() => {

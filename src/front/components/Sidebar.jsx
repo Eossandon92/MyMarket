@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { LayoutDashboard, ShoppingBag, Coffee, Apple, Settings, User, Tag, BarChart2, Calculator } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { NotificationBell } from "./NotificationBell";
@@ -8,6 +8,19 @@ import { useAuth } from "../context/AuthContext";
 export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const userMenuRef = useRef(null);
+
+    // Close user menu on outside click
+    useEffect(() => {
+        const handler = (e) => {
+            if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+                setUserMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
 
     // Map icons creatively based on category names
     const getIcon = (cat) => {
@@ -79,29 +92,75 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
             <div className="sidebar-footer">
                 <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <NotificationBell />
-                    <button
-                        onClick={() => {
-                            logout();
-                            navigate('/login');
-                        }}
-                        style={{
-                            background: 'transparent', border: 'none', color: '#e74c3c',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-                            fontWeight: 600, fontSize: '0.9rem'
-                        }}
-                        title="Cerrar sesión"
-                    >
-                        <LogOut size={18} /> Salir
-                    </button>
                 </div>
-                <div className="user-profile">
-                    <div className="avatar">
-                        <User size={24} color="#95A5A6" />
+
+                <div style={{ position: "relative" }} ref={userMenuRef}>
+                    <div
+                        className="user-profile"
+                        onClick={() => setUserMenuOpen(!userMenuOpen)}
+                        style={{ cursor: "pointer", transition: "all 0.2s" }}
+                        onMouseOver={(e) => e.currentTarget.style.background = "#e2e8f0"}
+                        onMouseOut={(e) => e.currentTarget.style.background = "#f8fafc"}
+                    >
+                        <div className="avatar">
+                            <User size={24} color="#95A5A6" />
+                        </div>
+                        <div className="user-info" style={{ flex: 1 }}>
+                            <span className="user-name">{user?.name || 'Cajero'}</span>
+                            <span className="user-role">{user?.role === 'admin' ? 'Administrador' : 'Cajero'}</span>
+                        </div>
                     </div>
-                    <div className="user-info">
-                        <span className="user-name">{user?.name || 'Cajero'}</span>
-                        <span className="user-role">{user?.role === 'admin' ? 'Administrador' : 'Cajero'}</span>
-                    </div>
+
+                    {/* Pop-up Menu */}
+                    {userMenuOpen && (
+                        <div style={{
+                            position: "absolute",
+                            bottom: "65px",
+                            left: "0",
+                            width: "100%",
+                            background: "white",
+                            borderRadius: "12px",
+                            boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                            border: "1px solid #e2e8f0",
+                            padding: "0.5rem",
+                            zIndex: 100,
+                            animation: "fadeIn 0.2s ease-out"
+                        }}>
+                            <button
+                                onClick={() => {
+                                    alert("Perfil: En construcción");
+                                    setUserMenuOpen(false);
+                                }}
+                                style={{
+                                    width: "100%", textAlign: "left", background: "transparent", border: "none",
+                                    padding: "0.75rem 1rem", borderRadius: "8px", cursor: "pointer",
+                                    display: "flex", alignItems: "center", gap: "0.5rem",
+                                    fontWeight: 600, color: "#334155", transition: "background 0.2s"
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = "#f1f5f9"}
+                                onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
+                            >
+                                <User size={18} /> Perfil
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setUserMenuOpen(false);
+                                    logout();
+                                    navigate('/login');
+                                }}
+                                style={{
+                                    width: "100%", textAlign: "left", background: "transparent", border: "none",
+                                    padding: "0.75rem 1rem", borderRadius: "8px", cursor: "pointer",
+                                    display: "flex", alignItems: "center", gap: "0.5rem",
+                                    fontWeight: 600, color: "#ef4444", transition: "background 0.2s"
+                                }}
+                                onMouseOver={(e) => e.currentTarget.style.background = "#fef2f2"}
+                                onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
+                            >
+                                <LogOut size={18} /> Cerrar Sesión
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </aside>
