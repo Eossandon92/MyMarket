@@ -733,51 +733,74 @@ def upload_inventory_excel():
         return jsonify({"msg": "No selected file"}), 400
 
     try:
-        # Read the file with pandas (handles .xls, .xlsx, .csv)
+        # Use pandas ONLY to read the file into memory as a string
         filename = file.filename.lower()
         if filename.endswith('.csv'):
             df = pd.read_csv(file)
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
-            df = pd.read_excel(file)
+            try:
+                df = pd.read_excel(file)
+            except Exception as e:
+                return jsonify({"msg": "Error leyendo el archivo Excel. Asegúrate de que no esté corrupto."}), 400
         else:
             return jsonify({"msg": "Formato de archivo no soportado. Sube un excel (.xlsx) o .csv"}), 400
             
-        # Get up to 150 rows as a string for the AI prompt to avoid token limits
+        import json
+        from google import genai
+        
+        # Convert first 150 rows to CSV text for the AI
         csv_string = df.head(150).to_csv(index=False)
         
-        # Configure Gemini
         client = genai.Client(api_key=GOOGLE_API_KEY)
-        
         prompt = f"""
-        Eres un asistente de inventario experto. A continuación te pasaré el texto de un archivo Excel importado por un minimarket.
-        Tu trabajo es leer cada fila y extraer estrictamente los siguientes datos, devolviéndome un arreglo JSON puro (sin markdown, sin explicaciones):
-        - barcode (texto, puede ser null si está vacío)
-        - name (texto, capitalizado y limpio)
-        - cost (número entero, si no hay pon 0)
-        - price (número entero, si no hay pon 0)
-        - stock (número entero, si no hay pon 0)
-        - category_name (texto corto inferido del producto o la fila, si no estás seguro usa 'General')
+        Eres un asistente inteligente avanzado. A continuación te pasaré el texto en CSV de un archivo Excel de inventario.
+        Tu trabajo es extraer los productos y devolverme un arreglo JSON válido.
         
-        Aquí están los datos CSV crudos:
+        REGLAS ESTRICTAS DE EXTRACCIÓN:
+        - name: Extrae del campo "NOMBRE DEL PRODUCTO".
+        - cost: Extrae del campo "COSTO UNITARI" (Opcional, si no existe o está vacío, pon 0). Limpia el símbolo $.
+        - price: Extrae del campo "PRECIO DE VENT" (Opcional, si no existe o está vacío, pon 0). Limpia el símbolo $.
+        - stock: Extrae del campo "STOCK" (Opcional, si no existe o está vacío, pon 0).
+        - category_name: Extrae del campo "CATEGORIA". Si no existe, pon "General".
+        
+        IMPORTANTE: Devuelve TODOS los números de cost, price y stock como ENTEROS (int), no como texto. Por ejemplo, si dice "$ 1,800", debes devolver 1800.
+        
+        DEVUELVE ÚNICAMENTE EL ARREGLO JSON. Nada de texto antes ni código markdown. Solo `[ {{...}}, {{...}} ]`
+        
+        Datos CSV crudos:
         {csv_string}
         """
         
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
-        
+        response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
         text = response.text.strip()
-        if text.startswith('```json'):
-            text = text[7:]
-        if text.startswith('```'):
-            text = text[3:]
-        if text.endswith('```'):
-            text = text[:-3]
+        if text.startswith('```json'): text = text[7:]
+        if text.startswith('```'): text = text[3:]
+        if text.endswith('```'): text = text[:-3]
         text = text.strip()
         
-        parsed_items = json.loads(text)
+        try:
+            parsed_items = json.loads(text)
+        except Exception as e:
+            print("Failed to decode JSON from AI:", text[:100])
+            return jsonify({"msg": "Error al interpretar la respuesta de la IA. Por favor intenta de nuevo."}), 500
         
+        # Ensure all types are correct before returning
+        for item in parsed_items:
+            try: item["cost"] = int(float(item.get("cost", 0)))
+            except: item["cost"] = 0
+            
+            try: item["price"] = int(float(item.get("price", 0)))
+            except: item["price"] = 0
+            
+            try: item["stock"] = int(float(item.get("stock", 0)))
+            except: item["stock"] = 0
+            
+            if "name" not in item or not item["name"]:
+                item["name"] = "Producto Desconocido"
+                
+            if "category_name" not in item or not item["category_name"]:
+                item["category_name"] = "General"
+                
         return jsonify({"items": parsed_items}), 200
 
     except Exception as e:
@@ -819,10 +842,9 @@ def confirm_inventory():
                 business_id=business_id,
                 name=item.get('name', 'Producto Desconocido'),
                 price=int(item.get('price', 0)),
-                cost=int(item.get('cost', 0)),
                 stock=int(item.get('stock', 0)),
                 barcode=barcode,
-                category_id=category.id
+                category=category.name  # Note: The Product model schema uses category string, not id
             )
             db.session.add(product)
 
