@@ -11,18 +11,32 @@ import { CategoryMaintenance } from "./pages/CategoryMaintenance";
 import { Reports } from "./pages/Reports";
 import { CashRegister } from "./pages/CashRegister";
 import { AddStock } from "./pages/AddStock";
+import { Login } from "./pages/Login";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
-    // Root Route: All navigation will start from here.
-    <Route path="/" element={<Layout />} errorElement={<h1>Not found!</h1>} >
-      {/* Nested Routes: Defines sub-routes within the BaseHome component. */}
-      <Route path="/" element={<Home />} />
-      <Route path="/admin/products" element={<ProductMaintenance />} />
-      <Route path="/admin/categories" element={<CategoryMaintenance />} />
-      <Route path="/admin/reports" element={<Reports />} />
-      <Route path="/admin/cash-register" element={<CashRegister />} />
-      <Route path="/admin/add-stock" element={<AddStock />} />
+    <Route path="/">
+      {/* Public Routes */}
+      <Route path="login" element={<Login />} />
+
+      {/* Protected Routes inside Layout */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+        errorElement={<h1>Not found!</h1>}
+      >
+        <Route index element={<Home />} />
+        <Route path="admin/products" element={<ProductMaintenance />} />
+        <Route path="admin/categories" element={<CategoryMaintenance />} />
+        <Route path="admin/reports" element={<Reports />} />
+        <Route path="admin/cash-register" element={<CashRegister />} />
+        <Route path="admin/add-stock" element={<AddStock />} />
+      </Route>
     </Route>
   )
 );

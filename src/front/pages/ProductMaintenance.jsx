@@ -2,9 +2,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Edit2, Trash2, PlusCircle, Scan, Search } from "lucide-react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
+import { useAuth } from "../context/AuthContext";
 
 export const ProductMaintenance = () => {
-  const BUSINESS_ID = 1; // TODO: replace with value from auth context/session
+  const { businessId, token } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -200,7 +201,11 @@ export const ProductMaintenance = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/categories?business_id=${BUSINESS_ID}`);
+      if (!businessId || !token) return;
+
+      const response = await fetch(`http://localhost:3001/api/categories?business_id=${businessId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setCategories(data);
@@ -212,7 +217,11 @@ export const ProductMaintenance = () => {
 
   const fetchProducts = async () => {
     try {
-      const response = await fetch(`http://localhost:3001/api/products?business_id=${BUSINESS_ID}`);
+      if (!businessId || !token) return;
+
+      const response = await fetch(`http://localhost:3001/api/products?business_id=${businessId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -270,8 +279,11 @@ export const ProductMaintenance = () => {
     try {
       const response = await fetch("http://localhost:3001/api/generate-image", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_name: nameToUse })
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ product_name: formData.name })
       });
 
       if (response.ok) {
@@ -301,22 +313,23 @@ export const ProductMaintenance = () => {
     // Convert price and stock to numbers before sending
     const payload = {
       ...formData,
-      business_id: BUSINESS_ID,
+      business_id: businessId,
       price: parseFloat(formData.price),
       stock: parseInt(formData.stock, 10)
     };
 
-    const url = editingId
-      ? `http://localhost:3001/api/products/${editingId}`
-      : `http://localhost:3001/api/products`;
-
-    const method = editingId ? "PUT" : "POST";
-
     try {
+      const url = editingId
+        ? `http://localhost:3001/api/products/${editingId}`
+        : `http://localhost:3001/api/products`;
+
+      const method = editingId ? "PUT" : "POST";
+
       const response = await fetch(url, {
-        method: method,
+        method,
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
@@ -336,12 +349,12 @@ export const ProductMaintenance = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este producto?")) {
+    if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
       try {
         const response = await fetch(`http://localhost:3001/api/products/${id}`, {
-          method: "DELETE"
+          method: "DELETE",
+          headers: { "Authorization": `Bearer ${token}` }
         });
-
         if (response.ok) {
           fetchProducts();
         } else {

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PlusCircle, Search, Edit2, Trash2, X, Tag, ArrowLeft } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export const CategoryMaintenance = () => {
-    const BUSINESS_ID = 1; // TODO: replace with auth context/session value
+    const { businessId, token } = useAuth();
     const [categories, setCategories] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,7 +19,11 @@ export const CategoryMaintenance = () => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch(`http://localhost:3001/api/categories?business_id=${BUSINESS_ID}`);
+            if (!businessId || !token) return;
+
+            const response = await fetch(`http://localhost:3001/api/categories?business_id=${businessId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
             if (response.ok) {
                 const data = await response.json();
                 setCategories(data);
@@ -79,8 +84,9 @@ export const CategoryMaintenance = () => {
                 method: method,
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
                 },
-                body: JSON.stringify({ name: formData.name.trim(), business_id: BUSINESS_ID }),
+                body: JSON.stringify({ name: formData.name.trim(), business_id: businessId }),
             });
 
             if (response.ok) {
@@ -103,6 +109,7 @@ export const CategoryMaintenance = () => {
             try {
                 const response = await fetch(`http://localhost:3001/api/categories/${id}`, {
                     method: "DELETE",
+                    headers: { "Authorization": `Bearer ${token}` }
                 });
 
                 if (response.ok) {

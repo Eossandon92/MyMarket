@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, RefreshCw, Calculator, Banknote, CreditCard, Smartphone, CheckCircle, AlertCircle, Info, TrendingUp, BarChart2, Activity, FileText, Lock } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useAuth } from "../context/AuthContext";
 
 export const CashRegister = () => {
-    const BUSINESS_ID = 1; // TODO: replace with auth context/session value
+    const { businessId, token, user } = useAuth();
     const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
     const [summary, setSummary] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -18,10 +18,13 @@ export const CashRegister = () => {
 
     const fetchRegisterData = async () => {
         setIsLoading(true);
+        if (!businessId || !token) return;
         try {
             const backendUrl = import.meta.env.VITE_BACKEND_URL;
             // Endpoint que trae el resumen por medio de pago del día
-            const res = await fetch(`${backendUrl}/api/reports/cash-register?date=${date}&business_id=${BUSINESS_ID}`);
+            const res = await fetch(`${backendUrl}/api/reports/cash-register?date=${date}&business_id=${businessId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
             if (res.ok) {
                 const data = await res.json();
                 if (data.is_closed) {
@@ -143,13 +146,18 @@ export const CashRegister = () => {
 
         setIsLoading(true);
         try {
+            if (!businessId || !token || !user) return;
             const backendUrl = import.meta.env.VITE_BACKEND_URL;
             const res = await fetch(`${backendUrl}/api/reports/cash-register/close`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({
                     date: date,
-                    business_id: BUSINESS_ID,
+                    business_id: businessId,
+                    user_id: user.id,
                     starting_cash: valStartingCash,
                     counted_cash: valCountedCash,
                     counted_card: valCountedCard

@@ -3,8 +3,10 @@ import { Sidebar } from "../components/Sidebar";
 import { CheckoutModal } from "../components/CheckoutModal";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Scan } from "lucide-react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
+import { useAuth } from "../context/AuthContext";
 
 export const Home = () => {
+	const { businessId, token, user } = useAuth();
 	const [products, setProducts] = useState([]);
 	const [categories, setCategories] = useState([]);
 	const [selectedCategory, setSelectedCategory] = useState("Todos");
@@ -19,8 +21,11 @@ export const Home = () => {
 
 	const fetchProducts = async () => {
 		try {
+			if (!businessId || !token) return;
 			const backendUrl = import.meta.env.VITE_BACKEND_URL;
-			const res = await fetch(`${backendUrl}/api/products`);
+			const res = await fetch(`${backendUrl}/api/products?business_id=${businessId}`, {
+				headers: { "Authorization": `Bearer ${token}` }
+			});
 			if (res.ok) {
 				const data = await res.json();
 				setProducts(data);
@@ -40,8 +45,11 @@ export const Home = () => {
 
 	const handleBarcodeScan = useCallback(async (code) => {
 		try {
+			if (!businessId || !token) return;
 			const backendUrl = import.meta.env.VITE_BACKEND_URL;
-			const res = await fetch(`${backendUrl}/api/products/barcode/${encodeURIComponent(code)}`);
+			const res = await fetch(`${backendUrl}/api/products/barcode/${encodeURIComponent(code)}?business_id=${businessId}`, {
+				headers: { "Authorization": `Bearer ${token}` }
+			});
 			if (res.ok) {
 				const product = await res.json();
 				handleAddToCart(product);
@@ -96,14 +104,20 @@ export const Home = () => {
 
 	const handleConfirmCheckout = async (method) => {
 		try {
+			if (!businessId || !token || !user) return;
 			const backendUrl = import.meta.env.VITE_BACKEND_URL;
 			const orderData = {
+				business_id: businessId,
+				user_id: user.id,
 				payment_method: method,
 				items: cart.map(({ id, quantity }) => ({ product_id: id, quantity }))
 			};
 			const res = await fetch(`${backendUrl}/api/orders`, {
 				method: "POST",
-				headers: { "Content-Type": "application/json" },
+				headers: {
+					"Content-Type": "application/json",
+					"Authorization": `Bearer ${token}`
+				},
 				body: JSON.stringify(orderData),
 			});
 			if (res.ok) {
@@ -175,7 +189,7 @@ export const Home = () => {
 					}}>
 						<span style={{ fontWeight: 700, color: "var(--color-text-main)" }}>GreenMart POS</span>
 						<span>·</span>
-						<span>Cajero: Admin</span>
+						<span>Cajero: {user?.name || 'Admin'}</span>
 					</div>
 				</div>
 

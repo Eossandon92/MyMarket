@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { PackageOpen, Search, CheckCircle, AlertCircle, RefreshCw, Hand, ArrowRight, Camera, Save, Trash2, ChevronLeft } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export const AddStock = () => {
+    const { businessId, token } = useAuth();
     const navigate = useNavigate();
     // Single product states
     const [scannedProduct, setScannedProduct] = useState(null);
@@ -32,8 +34,11 @@ export const AddStock = () => {
 
     const fetchProducts = async () => {
         try {
+            if (!businessId || !token) return;
             const backendUrl = import.meta.env.VITE_BACKEND_URL;
-            const res = await fetch(`${backendUrl}/api/products`);
+            const res = await fetch(`${backendUrl}/api/products?business_id=${businessId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
             if (res.ok) {
                 const data = await res.json();
                 setAllProducts(data);
@@ -63,8 +68,11 @@ export const AddStock = () => {
         setScannedProduct(null);
 
         try {
+            if (!businessId || !token) return;
             const backendUrl = import.meta.env.VITE_BACKEND_URL;
-            const res = await fetch(`${backendUrl}/api/products/barcode/${barcode}`);
+            const res = await fetch(`${backendUrl}/api/products/barcode/${barcode}?business_id=${businessId}`, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
             if (res.ok) {
                 const data = await res.json();
                 setScannedProduct(data);
@@ -108,7 +116,10 @@ export const AddStock = () => {
 
             const res = await fetch(`${backendUrl}/api/products/${scannedProduct.id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify({ stock: newStock })
             });
 
@@ -146,6 +157,7 @@ export const AddStock = () => {
             const backendUrl = import.meta.env.VITE_BACKEND_URL;
             const res = await fetch(`${backendUrl}/api/inventory/scan-invoice`, {
                 method: "POST",
+                headers: { "Authorization": `Bearer ${token}` },
                 body: formData
             });
 
@@ -199,7 +211,10 @@ export const AddStock = () => {
 
             const res = await fetch(`${backendUrl}/api/inventory/bulk-add`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
                 body: JSON.stringify(payload)
             });
 

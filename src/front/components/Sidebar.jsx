@@ -1,10 +1,14 @@
 import React from "react";
 import { LayoutDashboard, ShoppingBag, Coffee, Apple, Settings, User, Tag, BarChart2, Calculator } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { NotificationBell } from "./NotificationBell";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, LogOut } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+
     // Map icons creatively based on category names
     const getIcon = (cat) => {
         const lowerCat = cat.toLowerCase();
@@ -73,16 +77,30 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
             </nav>
 
             <div className="sidebar-footer">
-                <div style={{ marginBottom: '0.75rem' }}>
+                <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <NotificationBell />
+                    <button
+                        onClick={() => {
+                            logout();
+                            navigate('/login');
+                        }}
+                        style={{
+                            background: 'transparent', border: 'none', color: '#e74c3c',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                            fontWeight: 600, fontSize: '0.9rem'
+                        }}
+                        title="Cerrar sesión"
+                    >
+                        <LogOut size={18} /> Salir
+                    </button>
                 </div>
                 <div className="user-profile">
                     <div className="avatar">
                         <User size={24} color="#95A5A6" />
                     </div>
                     <div className="user-info">
-                        <span className="user-name">Alex Johnson</span>
-                        <span className="user-role">Cajero Tarde</span>
+                        <span className="user-name">{user?.name || 'Cajero'}</span>
+                        <span className="user-role">{user?.role === 'admin' ? 'Administrador' : 'Cajero'}</span>
                     </div>
                 </div>
             </div>

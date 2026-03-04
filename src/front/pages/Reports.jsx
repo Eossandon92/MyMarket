@@ -5,8 +5,9 @@ import {
     CalendarDays, RefreshCcw, Package
 } from "lucide-react";
 
+import { useAuth } from "../context/AuthContext";
+
 const API = "http://localhost:3001/api";
-const BUSINESS_ID = 1; // TODO: replace with auth context/session value
 
 const PERIODS = [
     { id: "today", label: "Hoy" },
@@ -16,6 +17,7 @@ const PERIODS = [
 ];
 
 export const Reports = () => {
+    const { businessId, token } = useAuth();
     const [period, setPeriod] = useState("today");
     const [dateFrom, setDateFrom] = useState("");
     const [dateTo, setDateTo] = useState("");
@@ -27,12 +29,16 @@ export const Reports = () => {
         setLoading(true);
         setError("");
         try {
-            let url = `${API}/reports/sales?period=${period}&business_id=${BUSINESS_ID}`;
+            if (!businessId || !token) return;
+
+            let url = `${API}/reports/sales?period=${period}&business_id=${businessId}`;
             if (period === "custom") {
                 if (!dateFrom || !dateTo) { setError("Selecciona las fechas de inicio y fin."); setLoading(false); return; }
                 url += `&date_from=${dateFrom}&date_to=${dateTo}`;
             }
-            const res = await fetch(url);
+            const res = await fetch(url, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
             if (!res.ok) throw new Error("Error obteniendo reporte");
             setData(await res.json());
         } catch (e) {

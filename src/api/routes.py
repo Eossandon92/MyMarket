@@ -2,6 +2,7 @@
 This module takes care of starting the API Server, Loading the DB and Adding the endpoints
 """
 from flask import Flask, request, jsonify, url_for, Blueprint
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 from api.models import db, User, Product, Order, OrderItem, Category, CashSession, Business
 from werkzeug.security import generate_password_hash, check_password_hash
 from api.utils import generate_sitemap, APIException
@@ -104,15 +105,39 @@ def login():
     ).first()
 
     if not user or not check_password_hash(user.password, data['password']):
-        return jsonify({"msg": "Invalid credentials"}), 401
+        return jsonify({"msg": "Credenciales inválidas"}), 401
 
     if not user.is_active:
-        return jsonify({"msg": "User is inactive"}), 403
+        return jsonify({"msg": "Usuario inactivo"}), 403
+
+    # Create JWT with user identity and useful claims
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={
+            "business_id": user.business_id,
+            "role": user.role,
+            "name": user.name,
+            "email": user.email
+        }
+    )
 
     return jsonify({
-        "msg": "Login successful",
+        "msg": "Login exitoso",
+        "token": access_token,
         "user": user.serialize()
     }), 200
+
+
+@api.route('/auth/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    """Returns the current authenticated user from the JWT token."""
+    claims = get_jwt()
+    user_id = get_jwt_identity()
+    user = User.query.get(int(user_id))
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    return jsonify({"user": user.serialize()}), 200
 
 
 @api.route('/generate-image', methods=['POST'])
