@@ -13,6 +13,7 @@ import { CashRegister } from "./pages/CashRegister";
 import { AddStock } from "./pages/AddStock";
 import { Login } from "./pages/Login";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { SuperAdminDashboard } from "./pages/SuperAdminDashboard";
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -31,6 +32,7 @@ export const router = createBrowserRouter(
         errorElement={<h1>Not found!</h1>}
       >
         <Route index element={<Home />} />
+        <Route path="superadmin/dashboard" element={<SuperAdminDashboard />} />
         <Route path="admin/products" element={<ProductMaintenance />} />
         <Route path="admin/categories" element={<CategoryMaintenance />} />
         <Route path="admin/reports" element={<Reports />} />

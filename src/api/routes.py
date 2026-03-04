@@ -38,22 +38,58 @@ def handle_hello():
 # ─────────────────────────────────────────────
 
 @api.route('/business', methods=['GET'])
+@jwt_required()
 def get_businesses():
+    claims = get_jwt()
+    if claims.get('role') != 'superadmin':
+        return jsonify({"msg": "Unauthorized"}), 403
+        
     businesses = Business.query.order_by(Business.name.asc()).all()
+    # For the superadmin dashboard we might want to know how many users each has, 
+    # but for now we just return the business serialization
     return jsonify([b.serialize() for b in businesses]), 200
 
 @api.route('/business', methods=['POST'])
+@jwt_required()
 def create_business():
+    claims = get_jwt()
+    if claims.get('role') != 'superadmin':
+        return jsonify({"msg": "Unauthorized. Only superadmin can create tenants."}), 403
+
     data = request.json
-    if not data or 'name' not in data or 'slug' not in data:
-        return jsonify({"msg": "Missing required fields: name, slug"}), 400
+    required_fields = ['name', 'slug', 'admin_email', 'admin_password']
+    if not data or not all(k in data for k in required_fields):
+        return jsonify({"msg": f"Missing required fields: {required_fields}"}), 400
+        
     if Business.query.filter_by(slug=data['slug']).first():
         return jsonify({"msg": "Slug already in use"}), 400
+        
+    if User.query.filter_by(email=data['admin_email'].strip().lower()).first():
+        return jsonify({"msg": "Email already in use by another user"}), 400
+
+    # Create the Business
     business = Business(name=data['name'].strip(), slug=data['slug'].strip())
     db.session.add(business)
+    db.session.flush() # flush to get business.id without committing yet
+    
+    # Create the tenant's admin User
+    user = User(
+        business_id=business.id,
+        name="Admin " + business.name,
+        email=data['admin_email'].strip().lower(),
+        password=generate_password_hash(data['admin_password']),
+        role="admin",
+        is_active=True
+    )
+    db.session.add(user)
     db.session.commit()
-    return jsonify(business.serialize()), 201
+    
+    return jsonify({
+        "business": business.serialize(),
+        "admin_user": user.serialize()
+    }), 201
 
+# Note: Adding a PUT and DELETE route for Businesses later could be useful, but out of scope for MVP.
 @api.route('/business/<int:id>', methods=['GET'])
 def get_business(id):
     business = Business.query.get(id)
@@ -96,11 +132,10 @@ def register():
 @api.route('/auth/login', methods=['POST'])
 def login():
     data = request.json
-    if not data or 'email' not in data or 'password' not in data or 'business_id' not in data:
-        return jsonify({"msg": "Missing email, password or business_id"}), 400
+    if not data or 'email' not in data or 'password' not in data:
+        return jsonify({"msg": "Missing email or password"}), 400
 
     user = User.query.filter_by(
-        business_id=data['business_id'],
         email=data['email'].strip().lower()
     ).first()
 

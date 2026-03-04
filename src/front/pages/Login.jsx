@@ -7,7 +7,6 @@ export const Login = () => {
     const { login } = useAuth();
     const navigate = useNavigate();
 
-    const [businessId, setBusinessId] = useState("1"); // Por defecto negocio 1
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -16,7 +15,7 @@ export const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!email || !password || !businessId) {
+        if (!email || !password) {
             setError("Todos los campos son obligatorios");
             return;
         }
@@ -25,8 +24,12 @@ export const Login = () => {
         setError("");
 
         try {
-            await login(parseInt(businessId), email, password);
-            navigate("/"); // Redirige al inicio tras login exitoso
+            const user = await login(email, password);
+            if (user.role === "superadmin") {
+                navigate("/superadmin/dashboard");
+            } else {
+                navigate("/"); // Redirige al inicio tras login exitoso
+            }
         } catch (err) {
             setError(err.message);
         } finally {
@@ -36,7 +39,7 @@ export const Login = () => {
 
     return (
         <div style={{
-            minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+            minHeight: "100vh", width: "100%", display: "flex", alignItems: "center", justifyContent: "center",
             background: "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)", fontFamily: "Inter, sans-serif"
         }}>
             <div style={{
@@ -71,22 +74,6 @@ export const Login = () => {
                 )}
 
                 <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-
-                    <div>
-                        <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem", fontWeight: 600, color: "#334155" }}>
-                            ID de Sucursal / Negocio
-                        </label>
-                        <div style={{ position: "relative" }}>
-                            <Building2 size={18} color="#94a3b8" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)" }} />
-                            <input
-                                type="number"
-                                value={businessId}
-                                onChange={(e) => setBusinessId(e.target.value)}
-                                placeholder="Ej. 1"
-                                style={inputStyle}
-                            />
-                        </div>
-                    </div>
 
                     <div>
                         <label style={{ display: "block", marginBottom: "0.5rem", fontSize: "0.9rem", fontWeight: 600, color: "#334155" }}>

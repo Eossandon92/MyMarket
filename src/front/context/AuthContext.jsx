@@ -20,11 +20,11 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    const login = async (businessId, email, password) => {
+    const login = async (email, password) => {
         const res = await fetch(`${API}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ business_id: businessId, email, password })
+            body: JSON.stringify({ email, password })
         });
 
         const data = await res.json();
@@ -47,9 +47,10 @@ export const AuthProvider = ({ children }) => {
 
     // Convenience: the active business_id
     const businessId = user?.business_id ?? null;
+    const isSuperAdmin = user?.role === "superadmin";
 
     return (
-        <AuthContext.Provider value={{ user, token, businessId, login, logout, loading, isAuthenticated: !!token }}>
+        <AuthContext.Provider value={{ user, token, businessId, isSuperAdmin, login, logout, loading, isAuthenticated: !!token }}>
             {children}
         </AuthContext.Provider>
     );
