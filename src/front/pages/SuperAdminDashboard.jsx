@@ -94,7 +94,7 @@ export const SuperAdminDashboard = () => {
     };
 
     return (
-        <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "Inter, sans-serif" }}>
+        <div style={{ minHeight: "100vh", width: "100%", background: "#f8fafc", fontFamily: "Inter, sans-serif" }}>
             {/* Top Navigation Bar */}
             <nav style={{
                 background: "white", padding: "1rem 2rem", display: "flex", justifyContent: "space-between",
