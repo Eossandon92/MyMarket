@@ -13,6 +13,8 @@ from bs4 import BeautifulSoup
 from google import genai
 from thefuzz import process, fuzz
 import json
+import pandas as pd
+import io
 
 api = Blueprint('api', __name__)
 
@@ -714,3 +716,120 @@ def bulk_add_inventory():
         db.session.rollback()
         print("Error bulk updating stock:", str(e))
         return jsonify({"msg": "Internal server error"}), 500
+
+@api.route('/inventory/upload', methods=['POST'])
+@jwt_required()
+def upload_inventory_excel():
+    claims = get_jwt()
+    business_id = claims.get('business_id')
+    if not business_id:
+        return jsonify({"msg": "Missing business_id in token"}), 401
+
+    if 'file' not in request.files:
+        return jsonify({"msg": "No file uploaded"}), 400
+        
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"msg": "No selected file"}), 400
+
+    try:
+        # Read the file with pandas (handles .xls, .xlsx, .csv)
+        filename = file.filename.lower()
+        if filename.endswith('.csv'):
+            df = pd.read_csv(file)
+        elif filename.endswith('.xlsx') or filename.endswith('.xls'):
+            df = pd.read_excel(file)
+        else:
+            return jsonify({"msg": "Formato de archivo no soportado. Sube un excel (.xlsx) o .csv"}), 400
+            
+        # Get up to 150 rows as a string for the AI prompt to avoid token limits
+        csv_string = df.head(150).to_csv(index=False)
+        
+        # Configure Gemini
+        client = genai.Client(api_key=GOOGLE_API_KEY)
+        
+        prompt = f"""
+        Eres un asistente de inventario experto. A continuación te pasaré el texto de un archivo Excel importado por un minimarket.
+        Tu trabajo es leer cada fila y extraer estrictamente los siguientes datos, devolviéndome un arreglo JSON puro (sin markdown, sin explicaciones):
+        - barcode (texto, puede ser null si está vacío)
+        - name (texto, capitalizado y limpio)
+        - cost (número entero, si no hay pon 0)
+        - price (número entero, si no hay pon 0)
+        - stock (número entero, si no hay pon 0)
+        - category_name (texto corto inferido del producto o la fila, si no estás seguro usa 'General')
+        
+        Aquí están los datos CSV crudos:
+        {csv_string}
+        """
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        
+        text = response.text.strip()
+        if text.startswith('```json'):
+            text = text[7:]
+        if text.startswith('```'):
+            text = text[3:]
+        if text.endswith('```'):
+            text = text[:-3]
+        text = text.strip()
+        
+        parsed_items = json.loads(text)
+        
+        return jsonify({"items": parsed_items}), 200
+
+    except Exception as e:
+        print("Error parsing excel with AI:", str(e))
+        return jsonify({"msg": "Error al procesar el archivo con Inteligencia Artificial. Asegúrate de que no esté vacío."}), 500
+
+@api.route('/inventory/confirm', methods=['POST'])
+@jwt_required()
+def confirm_inventory():
+    claims = get_jwt()
+    business_id = claims.get('business_id')
+    if not business_id:
+        return jsonify({"msg": "Missing business_id in token"}), 401
+
+    data = request.json
+    if not data or 'items' not in data:
+        return jsonify({"msg": "No items provided"}), 400
+        
+    items = data['items']
+    
+    try:
+        for item in items:
+            cat_name = item.get('category_name', 'General').strip()
+            # Find or Create Category
+            category = Category.query.filter_by(business_id=business_id, name=cat_name).first()
+            if not category:
+                category = Category(business_id=business_id, name=cat_name)
+                db.session.add(category)
+                db.session.flush() # flush to get the category.id
+            
+            barcode = item.get('barcode')
+            if pd.isna(barcode) or str(barcode).lower() == 'nan':
+                barcode = None
+            else:
+                barcode = str(barcode).strip()
+                
+            # Create the Product
+            product = Product(
+                business_id=business_id,
+                name=item.get('name', 'Producto Desconocido'),
+                price=int(item.get('price', 0)),
+                cost=int(item.get('cost', 0)),
+                stock=int(item.get('stock', 0)),
+                barcode=barcode,
+                category_id=category.id
+            )
+            db.session.add(product)
+
+        db.session.commit()
+        return jsonify({"msg": f"Se insertaron {len(items)} productos con éxito"}), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        print("Error confirming bulk import:", str(e))
+        return jsonify({"msg": "Error interno al guardar los productos"}), 500
