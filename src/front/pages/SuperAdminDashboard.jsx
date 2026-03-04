@@ -13,7 +13,7 @@ export const SuperAdminDashboard = () => {
 
     // Modal state for creating a new business
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newBusiness, setNewBusiness] = useState({ name: "", slug: "", adminEmail: "", adminPassword: "" });
+    const [newBusiness, setNewBusiness] = useState({ name: "", slug: "", adminName: "", adminEmail: "", adminPassword: "" });
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
     const [createSuccess, setCreateSuccess] = useState("");
@@ -62,6 +62,7 @@ export const SuperAdminDashboard = () => {
                 body: JSON.stringify({
                     name: newBusiness.name,
                     slug: newBusiness.slug,
+                    admin_name: newBusiness.adminName,
                     admin_email: newBusiness.adminEmail,
                     admin_password: newBusiness.adminPassword
                 })
@@ -214,6 +215,18 @@ export const SuperAdminDashboard = () => {
                             </div>
 
                             <hr style={{ border: "none", borderTop: "1px dashed #cbd5e1", margin: "0.5rem 0" }} />
+
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#334155", marginBottom: "0.5rem" }}>Nombre del Administrador (Dueño)</label>
+                                <div style={{ position: "relative" }}>
+                                    <User size={18} color="#94a3b8" style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)" }} />
+                                    <input
+                                        required type="text" placeholder="Ej. Karlita Perez"
+                                        value={newBusiness.adminName} onChange={e => setNewBusiness({ ...newBusiness, adminName: e.target.value })}
+                                        style={inputStyle}
+                                    />
+                                </div>
+                            </div>
 
                             <div>
                                 <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#334155", marginBottom: "0.5rem" }}>Correo del Administrador (Dueño)</label>

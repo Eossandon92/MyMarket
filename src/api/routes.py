@@ -57,7 +57,7 @@ def create_business():
         return jsonify({"msg": "Unauthorized. Only superadmin can create tenants."}), 403
 
     data = request.json
-    required_fields = ['name', 'slug', 'admin_email', 'admin_password']
+    required_fields = ['name', 'slug', 'admin_name', 'admin_email', 'admin_password']
     if not data or not all(k in data for k in required_fields):
         return jsonify({"msg": f"Missing required fields: {required_fields}"}), 400
         
@@ -75,7 +75,7 @@ def create_business():
     # Create the tenant's admin User
     user = User(
         business_id=business.id,
-        name="Admin " + business.name,
+        name=data['admin_name'].strip(),
         email=data['admin_email'].strip().lower(),
         password=generate_password_hash(data['admin_password']),
         role="admin",
@@ -150,6 +150,7 @@ def login():
         identity=str(user.id),
         additional_claims={
             "business_id": user.business_id,
+            "business_name": user.business.name if user.business else "",
             "role": user.role,
             "name": user.name,
             "email": user.email
