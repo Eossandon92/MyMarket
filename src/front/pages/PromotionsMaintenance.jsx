@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Search, Save, Package } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import useBarcodeScanner from "../hooks/useBarcodeScanner";
+import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
 export const PromotionsMaintenance = () => {
     const { token, businessId } = useAuth();
