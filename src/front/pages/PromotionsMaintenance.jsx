@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Search, Save, Package } from "lucide-react";
+import { Plus, Trash2, Search, Save, Package, Printer } from "lucide-react";
+import Barcode from "react-barcode";
 import { useAuth } from "../context/AuthContext";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 
@@ -151,6 +152,42 @@ export const PromotionsMaintenance = () => {
 
     const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()) || (p.barcode && p.barcode.includes(searchTerm)));
 
+    const handlePrintBarcode = (promo) => {
+        if (!promo.barcode) return;
+        const printWindow = window.open('', '_blank');
+        const svgElement = document.getElementById(`barcode-wrapper-${promo.id}`);
+
+        if (svgElement) {
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Imprimir - ${promo.name}</title>
+                        <style>
+                            @page { margin: 0; }
+                            body { 
+                                display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
+                                font-family: sans-serif; padding-top: 20px; 
+                            }
+                            h2 { margin: 0 0 10px 0; font-size: 16px; text-align: center; }
+                            .barcode-container svg { width: auto; max-width: 100%; height: auto; }
+                        </style>
+                    </head>
+                    <body>
+                        <h2>${promo.name}</h2>
+                        <div class="barcode-container">${svgElement.innerHTML}</div>
+                        <script>
+                            setTimeout(() => {
+                                window.print();
+                                window.close();
+                            }, 300);
+                        </script>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+    };
+
     return (
         <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "2rem" }}>
 
@@ -290,14 +327,19 @@ export const PromotionsMaintenance = () => {
                                         <h4 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "700", color: "var(--color-text-main)" }}>{promo.name}</h4>
                                         <span style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--color-primary)" }}>${promo.price.toLocaleString("es-CL")}</span>
                                         {promo.barcode && (
-                                            <div style={{ fontSize: "0.8rem", color: "#64748b", marginTop: "0.25rem" }}>
-                                                Caja / Código: {promo.barcode}
+                                            <div style={{ marginTop: "0.5rem", background: "#f8fafc", padding: "0.5rem", borderRadius: "8px", display: "inline-block" }} id={`barcode-wrapper-${promo.id}`}>
+                                                <Barcode value={promo.barcode} format="EAN13" width={1.5} height={40} fontSize={14} displayValue={true} />
                                             </div>
                                         )}
                                     </div>
-                                    <button onClick={() => handleDeletePromotion(promo.id)} style={{ background: "#fee2e2", border: "none", width: "32px", height: "32px", borderRadius: "8px", color: "#ef4444", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                        <Trash2 size={16} />
-                                    </button>
+                                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                                        <button onClick={() => handlePrintBarcode(promo)} title="Imprimir Etiqueta" style={{ background: "#e2e8f0", border: "none", width: "32px", height: "32px", borderRadius: "8px", color: "#475569", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            <Printer size={16} />
+                                        </button>
+                                        <button onClick={() => handleDeletePromotion(promo.id)} title="Eliminar Pack" style={{ background: "#fee2e2", border: "none", width: "32px", height: "32px", borderRadius: "8px", color: "#ef4444", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div style={{ fontSize: "0.85rem", color: "#64748b", background: "#f8fafc", padding: "0.5rem", borderRadius: "6px" }}>
                                     <strong>Contenido:</strong>
