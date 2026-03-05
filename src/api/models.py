@@ -15,6 +15,7 @@ class Business(db.Model):
     users = db.relationship("User", backref="business", lazy=True)
     categories = db.relationship("Category", backref="business", lazy=True)
     products = db.relationship("Product", backref="business", lazy=True)
+    promotions = db.relationship("Promotion", backref="business", lazy=True)
     orders = db.relationship("Order", backref="business", lazy=True)
     cash_sessions = db.relationship("CashSession", backref="business", lazy=True)
 
@@ -183,4 +184,51 @@ class CashSession(db.Model):
             "counted_cash": self.counted_cash,
             "counted_card": self.counted_card,
             "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class Promotion(db.Model):
+    """A promotional pack consisting of multiple products."""
+    id: Mapped[int] = mapped_column(primary_key=True)
+    business_id: Mapped[int] = mapped_column(db.ForeignKey("business.id"), nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    price: Mapped[float] = mapped_column(nullable=False)
+    barcode: Mapped[str] = mapped_column(String(100), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    # Barcode is unique within a business
+    __table_args__ = (
+        UniqueConstraint("business_id", "barcode", name="uq_promotion_business_barcode"),
+    )
+
+    items = db.relationship("PromotionItem", backref="promotion", lazy=True, cascade="all, delete-orphan")
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "business_id": self.business_id,
+            "name": self.name,
+            "price": self.price,
+            "barcode": self.barcode,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "items": [item.serialize() for item in self.items]
+        }
+
+
+class PromotionItem(db.Model):
+    """A product and its quantity within a promotional pack."""
+    id: Mapped[int] = mapped_column(primary_key=True)
+    promotion_id: Mapped[int] = mapped_column(db.ForeignKey("promotion.id"), nullable=False)
+    product_id: Mapped[int] = mapped_column(db.ForeignKey("product.id"), nullable=False)
+    quantity: Mapped[int] = mapped_column(nullable=False, default=1)
+
+    product = db.relationship("Product", lazy=True)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "promotion_id": self.promotion_id,
+            "product_id": self.product_id,
+            "quantity": self.quantity,
+            "product": self.product.serialize() if self.product else None
         }

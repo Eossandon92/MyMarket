@@ -7,6 +7,7 @@ import {
 import { Layout } from "./pages/Layout";
 import { Home } from "./pages/Home";
 import { ProductMaintenance } from "./pages/ProductMaintenance";
+import { PromotionsMaintenance } from "./pages/PromotionsMaintenance";
 import { CategoryMaintenance } from "./pages/CategoryMaintenance";
 import { Reports } from "./pages/Reports";
 import { CashRegister } from "./pages/CashRegister";
@@ -34,6 +35,7 @@ export const router = createBrowserRouter(
         <Route index element={<Home />} />
         <Route path="superadmin/dashboard" element={<SuperAdminDashboard />} />
         <Route path="admin/products" element={<ProductMaintenance />} />
+        <Route path="admin/promotions" element={<PromotionsMaintenance />} />
         <Route path="admin/categories" element={<CategoryMaintenance />} />
         <Route path="admin/reports" element={<Reports />} />
         <Route path="admin/cash-register" element={<CashRegister />} />

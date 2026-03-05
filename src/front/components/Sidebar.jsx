@@ -63,6 +63,12 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
                         <span>Productos</span>
                     </button>
                 </Link>
+                <Link to="/admin/promotions" style={{ textDecoration: 'none', marginTop: '0.5rem' }}>
+                    <button className="touch-btn category-btn">
+                        <Tag size={20} />
+                        <span>Promociones (Packs)</span>
+                    </button>
+                </Link>
                 <Link to="/admin/add-stock" style={{ textDecoration: 'none', marginTop: '0.5rem' }}>
                     <button className="touch-btn category-btn">
                         <PlusCircle size={20} />

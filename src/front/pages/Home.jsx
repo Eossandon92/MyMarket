@@ -23,17 +23,26 @@ export const Home = () => {
 		try {
 			if (!businessId || !token) return;
 			const backendUrl = import.meta.env.VITE_BACKEND_URL;
-			const res = await fetch(`${backendUrl}/api/products?business_id=${businessId}`, {
-				headers: { "Authorization": `Bearer ${token}` }
-			});
-			if (res.ok) {
-				const data = await res.json();
-				setProducts(data);
-				const cats = ["Todos", ...new Set(data.map(p => p.category).filter(Boolean))];
+
+			// Bring both products and promotions
+			const [resProd, resPromo] = await Promise.all([
+				fetch(`${backendUrl}/api/products?business_id=${businessId}`, { headers: { "Authorization": `Bearer ${token}` } }),
+				fetch(`${backendUrl}/api/promotions?business_id=${businessId}`, { headers: { "Authorization": `Bearer ${token}` } })
+			]);
+
+			if (resProd.ok && resPromo.ok) {
+				const productsData = await resProd.json();
+				const promosData = await resPromo.json();
+
+				const fullCatalog = [...promosData, ...productsData];
+				setProducts(fullCatalog);
+
+				// Deduplicate categories, ensuring "Todos" and "Promociones" exist if appropriate
+				const cats = ["Todos", ...new Set(fullCatalog.map(p => p.category).filter(Boolean))];
 				setCategories(cats);
 			}
 		} catch (error) {
-			console.error("Error fetching products:", error);
+			console.error("Error fetching catalog:", error);
 		}
 	};
 
@@ -43,26 +52,19 @@ export const Home = () => {
 		setTimeout(() => setScanToast(null), 2500);
 	}, []);
 
-	const handleBarcodeScan = useCallback(async (code) => {
-		try {
-			if (!businessId || !token) return;
-			const backendUrl = import.meta.env.VITE_BACKEND_URL;
-			const res = await fetch(`${backendUrl}/api/products/barcode/${encodeURIComponent(code)}?business_id=${businessId}`, {
-				headers: { "Authorization": `Bearer ${token}` }
-			});
-			if (res.ok) {
-				const product = await res.json();
-				handleAddToCart(product);
-				showToast(`✅ ${product.name} agregado al carrito`, "success");
-			} else {
-				showToast(`❌ Código no encontrado: ${code}`, "error");
-			}
-		} catch (err) {
-			console.error("Error scanning barcode:", err);
-			showToast("❌ Error al conectar con el servidor", "error");
-		}
-	}, [showToast]);
+	const handleBarcodeScan = useCallback((code) => {
+		if (!products || products.length === 0) return;
 
+		// Look up in the already loaded catalog (handling both products and promotions)
+		const foundItem = products.find(p => p.barcode && p.barcode.toString().trim() === code.toString().trim());
+
+		if (foundItem) {
+			handleAddToCart(foundItem);
+			showToast(`✅ ${foundItem.name} agregado al carrito`, "success");
+		} else {
+			showToast(`❌ Código no encontrado: ${code}`, "error");
+		}
+	}, [products, showToast]);
 	// El escáner está siempre activo en la pantalla del POS
 	useBarcodeScanner(handleBarcodeScan, { enabled: true });
 
@@ -110,7 +112,12 @@ export const Home = () => {
 				business_id: businessId,
 				user_id: user.id,
 				payment_method: method,
-				items: cart.map(({ id, quantity }) => ({ product_id: id, quantity }))
+				items: cart.map(item => ({
+					product_id: item.is_promotion ? null : item.id,
+					is_promotion: item.is_promotion || false,
+					real_promo_id: item.real_promo_id || null,
+					quantity: item.quantity
+				}))
 			};
 			const res = await fetch(`${backendUrl}/api/orders`, {
 				method: "POST",

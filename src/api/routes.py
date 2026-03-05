@@ -412,30 +412,68 @@ def create_order():
     db.session.flush() # To get the order ID
 
     total_price = 0
+    from api.models import Promotion
+    
     for item in items_data:
-        product_id = item.get('product_id')
         quantity = item.get('quantity', 1)
+        is_promo = item.get('is_promotion', False)
 
-        product = Product.query.get(product_id)
-        if not product:
-            db.session.rollback()
-            return jsonify({"msg": f"Product with id {product_id} not found"}), 404
-        
-        # Opcional: descontar stock
-        if product.stock < quantity:
-            db.session.rollback()
-            return jsonify({"msg": f"Not enough stock for {product.name}"}), 400
+        if is_promo:
+            # Handle Promotion Pack
+            real_promo_id = item.get('real_promo_id')
+            promo = Promotion.query.get(real_promo_id)
+            if not promo:
+                db.session.rollback()
+                return jsonify({"msg": f"Promoción {real_promo_id} no encontrada"}), 404
             
-        product.stock -= quantity
+            # Check stock for all items inside the promo
+            for p_item in promo.items:
+                needed_qty = p_item.quantity * quantity
+                if p_item.product.stock < needed_qty:
+                    db.session.rollback()
+                    return jsonify({"msg": f"No hay stock suficiente de {p_item.product.name} para armar el pack"}), 400
+            
+            # Deduct stock and add OrderItems
+            promo_price_distributed = False
+            for p_item in promo.items:
+                p_item.product.stock -= (p_item.quantity * quantity)
+                
+                # Assign the price to the first item of the pack, others 0 for receipt purposes
+                item_price = promo.price if not promo_price_distributed else 0
+                promo_price_distributed = True
+                
+                order_item = OrderItem(
+                    order_id=new_order.id,
+                    product_id=p_item.product_id,
+                    quantity=p_item.quantity * quantity,
+                    price_at_time=item_price
+                )
+                db.session.add(order_item)
+            
+            total_price += (promo.price * quantity)
 
-        order_item = OrderItem(
-            order_id=new_order.id,
-            product_id=product.id,
-            quantity=quantity,
-            price_at_time=product.price
-        )
-        db.session.add(order_item)
-        total_price += (product.price * quantity)
+        else:
+            # Normal Product
+            product_id = item.get('product_id')
+            product = Product.query.get(product_id)
+            if not product:
+                db.session.rollback()
+                return jsonify({"msg": f"Product with id {product_id} not found"}), 404
+            
+            if product.stock < quantity:
+                db.session.rollback()
+                return jsonify({"msg": f"Not enough stock for {product.name}"}), 400
+                
+            product.stock -= quantity
+
+            order_item = OrderItem(
+                order_id=new_order.id,
+                product_id=product.id,
+                quantity=quantity,
+                price_at_time=product.price
+            )
+            db.session.add(order_item)
+            total_price += (product.price * quantity)
 
     new_order.total_price = total_price
     db.session.commit()
@@ -756,78 +794,87 @@ def upload_inventory_excel():
         return jsonify({"msg": "No file uploaded"}), 400
         
     file = request.files['file']
-    if file.filename == '':
-        return jsonify({"msg": "No selected file"}), 400
-
     try:
-        # Use pandas ONLY to read the file into memory as a string
+        # Use Pandas for deterministic extraction since the user's Excel is now cleanly formatted
         filename = file.filename.lower()
         if filename.endswith('.csv'):
             df = pd.read_csv(file)
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
             try:
-                df = pd.read_excel(file)
+                xls = pd.ExcelFile(file)
+                
+                # Check if there is a specific sheet named 'INVENTARIO'
+                target_sheet = 0  # Default to first sheet
+                for sheet in xls.sheet_names:
+                    if 'INVENTARIO' in sheet.upper():
+                        target_sheet = sheet
+                        break
+                        
+                # Read without headers first to find where the actual table starts
+                df = pd.read_excel(xls, sheet_name=target_sheet, header=None)
+                
+                # Find the row that contains 'NOMBRE' (or similar) to use as the header
+                header_idx = 0
+                for idx, row in df.head(20).iterrows():
+                    row_str = " ".join([str(val).upper() for val in row if pd.notna(val)])
+                    if "NOMBRE" in row_str or "PRODUCTO" in row_str:
+                        header_idx = idx
+                        break
+                        
+                # Re-read or just slice the dataframe using the found header index
+                df.columns = df.iloc[header_idx]
+                df = df[header_idx + 1:].reset_index(drop=True)
+                
             except Exception as e:
+                print("Excel Parse Error:", str(e))
                 return jsonify({"msg": "Error leyendo el archivo Excel. Asegúrate de que no esté corrupto."}), 400
         else:
             return jsonify({"msg": "Formato de archivo no soportado. Sube un excel (.xlsx) o .csv"}), 400
             
-        import json
-        from google import genai
+        # Clean up column names to uppercase and strip whitespace
+        df.columns = df.columns.astype(str).str.strip().str.upper()
+        cols = df.columns.tolist()
         
-        # Convert first 150 rows to CSV text for the AI
-        csv_string = df.head(150).to_csv(index=False)
+        # Flexibly find the right columns
+        name_col = next((c for c in cols if 'NOMBRE' in c or 'PRODUCTO' in c), None)
+        cost_col = next((c for c in cols if 'COSTO' in c), None)
+        price_col = next((c for c in cols if 'PRECIO' in c), None)
+        stock_col = next((c for c in cols if 'STOCK' in c or 'CANTIDAD' in c), None)
+        cat_col = next((c for c in cols if 'CATEG' in c), None)
         
-        client = genai.Client(api_key=GOOGLE_API_KEY)
-        prompt = f"""
-        Eres un asistente inteligente avanzado. A continuación te pasaré el texto en CSV de un archivo Excel de inventario.
-        Tu trabajo es extraer los productos y devolverme un arreglo JSON válido.
+        if not name_col:
+            return jsonify({"msg": "No se encontró la columna de Nombres de Producto. Asegúrate de que diga 'NOMBRE DEL PRODUCTO' en la primera fila."}), 400
+
+        parsed_items = []
         
-        REGLAS ESTRICTAS DE EXTRACCIÓN:
-        - name: Extrae del campo "NOMBRE DEL PRODUCTO".
-        - cost: Extrae del campo "COSTO UNITARI" (Opcional, si no existe o está vacío, pon 0). Limpia el símbolo $.
-        - price: Extrae del campo "PRECIO DE VENT" (Opcional, si no existe o está vacío, pon 0). Limpia el símbolo $.
-        - stock: Extrae del campo "STOCK" (Opcional, si no existe o está vacío, pon 0).
-        - category_name: Extrae del campo "CATEGORIA". Si no existe, pon "General".
-        
-        IMPORTANTE: Devuelve TODOS los números de cost, price y stock como ENTEROS (int), no como texto. Por ejemplo, si dice "$ 1,800", debes devolver 1800.
-        
-        DEVUELVE ÚNICAMENTE EL ARREGLO JSON. Nada de texto antes ni código markdown. Solo `[ {{...}}, {{...}} ]`
-        
-        Datos CSV crudos:
-        {csv_string}
-        """
-        
-        response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
-        text = response.text.strip()
-        if text.startswith('```json'): text = text[7:]
-        if text.startswith('```'): text = text[3:]
-        if text.endswith('```'): text = text[:-3]
-        text = text.strip()
-        
-        try:
-            parsed_items = json.loads(text)
-        except Exception as e:
-            print("Failed to decode JSON from AI:", text[:100])
-            return jsonify({"msg": "Error al interpretar la respuesta de la IA. Por favor intenta de nuevo."}), 500
-        
-        # Ensure all types are correct before returning
-        for item in parsed_items:
-            try: item["cost"] = int(float(item.get("cost", 0)))
-            except: item["cost"] = 0
+        def clean_number(val):
+            if pd.isna(val) or val == "": return 0
+            val_str = str(val).strip().replace('$', '').replace(',', '').replace(' ', '')
+            try: return int(float(val_str))
+            except: return 0
+
+        for _, row in df.iterrows():
+            name_val = row.get(name_col)
+            if pd.isna(name_val) or str(name_val).strip() == "": continue
             
-            try: item["price"] = int(float(item.get("price", 0)))
-            except: item["price"] = 0
+            # Extract category mapping "NO EXISTE" to General if desired, but we can just pass it through
+            cat_val = row.get(cat_col) if cat_col else "General"
+            if pd.isna(cat_val) or str(cat_val).strip() == "": cat_val = "General"
             
-            try: item["stock"] = int(float(item.get("stock", 0)))
-            except: item["stock"] = 0
+            cost_val = clean_number(row.get(cost_col)) if cost_col else 0
+            price_val = clean_number(row.get(price_col)) if price_col else 0
+            stock_val = clean_number(row.get(stock_col)) if stock_col else 0
+
+            parsed_items.append({
+                "name": str(name_val).strip(),
+                "cost": cost_val,
+                "price": price_val,
+                "stock": stock_val,
+                "category_name": str(cat_val).strip().title()
+            })
             
-            if "name" not in item or not item["name"]:
-                item["name"] = "Producto Desconocido"
-                
-            if "category_name" not in item or not item["category_name"]:
-                item["category_name"] = "General"
-                
+            if len(parsed_items) >= 250: break
+            
         return jsonify({"items": parsed_items}), 200
 
     except Exception as e:
@@ -901,3 +948,96 @@ def confirm_inventory():
         db.session.rollback()
         print("Error confirming bulk import:", str(e))
         return jsonify({"msg": "Error interno al guardar los productos"}), 500
+
+# ─────────────────────────────────────────────
+# PROMOTIONS endpoints
+# ─────────────────────────────────────────────
+
+@api.route('/promotions', methods=['GET'])
+def get_promotions():
+    business_id = request.args.get('business_id', type=int)
+    if not business_id:
+        return jsonify({"msg": "Missing business_id query param"}), 400
+    from api.models import Promotion
+    promotions = Promotion.query.filter_by(business_id=business_id).order_by(Promotion.id.desc()).all()
+    # Serialize promotions but adapt them so they look like 'Products' to the POS
+    results = []
+    for promo in promotions:
+        results.append({
+            "is_promotion": True,
+            "id": f"promo_{promo.id}", # virtual ID to avoid clashing with products
+            "real_promo_id": promo.id,
+            "business_id": promo.business_id,
+            "name": promo.name,
+            "price": promo.price,
+            "barcode": promo.barcode,
+            "category": "Promociones",
+            "image_url": "https://ui-avatars.com/api/?name=Pack&background=FFD700&color=000&size=200", 
+            "stock": 999, # Pack stock depends on its items, handled at checkout
+            "items": [item.serialize() for item in promo.items]
+        })
+    return jsonify(results), 200
+
+@api.route('/promotions', methods=['POST'])
+@jwt_required()
+def create_promotion():
+    claims = get_jwt()
+    business_id = claims.get('business_id')
+    if not business_id:
+        return jsonify({"msg": "Missing business_id in token"}), 401
+
+    data = request.json
+    if not data or 'name' not in data or 'price' not in data or 'items' not in data:
+        return jsonify({"msg": "Missing required fields: name, price, items"}), 400
+
+    items_data = data['items']
+    if len(items_data) == 0:
+        return jsonify({"msg": "Promotion must have at least one product"}), 400
+
+    from api.models import Promotion, PromotionItem
+
+    # Check if barcode already exists for another promotion
+    barcode = data.get('barcode')
+    if barcode:
+        barcode = str(barcode).strip()
+        existing = Promotion.query.filter_by(business_id=business_id, barcode=barcode).first()
+        if existing:
+            return jsonify({"msg": "Esa caja/código de barras ya está asignada a otra promoción."}), 400
+    else:
+        barcode = None
+
+    new_promo = Promotion(
+        business_id=business_id,
+        name=data['name'],
+        price=float(data['price']),
+        barcode=barcode
+    )
+    db.session.add(new_promo)
+    db.session.flush()
+
+    for item in items_data:
+        promo_item = PromotionItem(
+            promotion_id=new_promo.id,
+            product_id=item['product_id'],
+            quantity=item.get('quantity', 1)
+        )
+        db.session.add(promo_item)
+
+    db.session.commit()
+    return jsonify({"msg": "Promoción creada con éxito", "promotion": new_promo.serialize()}), 201
+
+@api.route('/promotions/<int:id>', methods=['DELETE'])
+@jwt_required()
+def delete_promotion(id):
+    from api.models import Promotion
+    claims = get_jwt()
+    business_id = claims.get('business_id')
+
+    promo = Promotion.query.filter_by(id=id, business_id=business_id).first()
+    if not promo:
+        return jsonify({"msg": "Promotion not found"}), 404
+
+    # The relationship cascade defined in models.py deletes PromotionItems automatically
+    db.session.delete(promo)
+    db.session.commit()
+    return jsonify({"msg": "Promoción eliminada"}), 200
