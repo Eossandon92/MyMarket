@@ -228,7 +228,6 @@ export const Home = () => {
 					gap: "1rem",
 					overflowY: "auto",
 					flex: 1,
-					alignItems: "start",
 					alignContent: "start",
 				}}>
 					{currentProducts.length > 0 ? currentProducts.map((product) => (
@@ -245,7 +244,8 @@ export const Home = () => {
 								display: "flex",
 								flexDirection: "column",
 								boxShadow: "var(--shadow-sm)",
-								height: "255px",
+								minHeight: "255px",
+								height: "100%",
 							}}
 							onMouseOver={(e) => {
 								e.currentTarget.style.borderColor = "var(--color-primary)";
@@ -274,7 +274,7 @@ export const Home = () => {
 									style={{ width: "100%", height: "100%", objectFit: "contain" }}
 								/>
 							</div>
-							<p style={{ fontSize: "0.9rem", fontWeight: "600", color: "var(--color-text-main)", marginBottom: "0.25rem", lineHeight: "1.3", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{product.name}</p>
+							<p style={{ fontSize: "0.9rem", fontWeight: "600", color: "var(--color-text-main)", marginBottom: "0.25rem", lineHeight: "1.3" }}>{product.name}</p>
 							<p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>{product.category}</p>
 							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
 								<span style={{ fontWeight: "800", fontSize: "1.05rem", color: "var(--color-text-main)" }}>
