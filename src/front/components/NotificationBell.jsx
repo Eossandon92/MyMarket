@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, AlertTriangle, X, Package } from "lucide-react";
+import { Bell, AlertTriangle, X, Package, Printer } from "lucide-react";
 import { Link } from "react-router-dom";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useAuth } from "../context/AuthContext";
 
 const API = "http://localhost:3001/api";
@@ -37,6 +39,40 @@ export const NotificationBell = () => {
     }, []);
 
     const count = lowStock.length;
+
+    const handlePrintShoppingList = () => {
+        if (count === 0) return;
+        const doc = new jsPDF();
+
+        doc.setFontSize(18);
+        doc.text("Lista de Compras - Stock Bajo", 14, 22);
+        doc.setFontSize(11);
+        doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 14, 30);
+
+        const tableColumn = ["Producto", "Categoría", "Stock Actual", "Mínimo"];
+        const tableRows = [];
+
+        lowStock.forEach(product => {
+            const productData = [
+                product.name,
+                product.category || "Variados",
+                product.stock,
+                product.min_stock || 0
+            ];
+            tableRows.push(productData);
+        });
+
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 40,
+            styles: { fontSize: 10 },
+            headStyles: { fillColor: [239, 68, 68] } // red-500
+        });
+
+        doc.save("lista_de_compras_stock_bajo.pdf");
+        setOpen(false); // Close the popup after generating
+    };
 
     return (
         <div ref={ref} style={{ position: "relative" }}>
@@ -107,11 +143,26 @@ export const NotificationBell = () => {
                                 Stock Bajo
                             </span>
                         </div>
-                        <button onClick={() => setOpen(false)} style={{
-                            background: "none", border: "none", cursor: "pointer", color: "#94a3b8"
-                        }}>
-                            <X size={16} />
-                        </button>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                            {count > 0 && (
+                                <button
+                                    onClick={handlePrintShoppingList}
+                                    title="Exportar Lista de Compras PDF"
+                                    style={{
+                                        background: "#ffedd5", border: "none", cursor: "pointer",
+                                        color: "#c2410c", padding: "0.4rem", borderRadius: "6px",
+                                        display: "flex", alignItems: "center"
+                                    }}
+                                >
+                                    <Printer size={16} />
+                                </button>
+                            )}
+                            <button onClick={() => setOpen(false)} style={{
+                                background: "none", border: "none", cursor: "pointer", color: "#94a3b8"
+                            }}>
+                                <X size={16} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* List */}
