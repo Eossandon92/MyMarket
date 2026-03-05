@@ -6,7 +6,7 @@ import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { useAuth } from "../context/AuthContext";
 
 export const Home = () => {
-	const { businessId, token, user } = useAuth();
+	const { businessId, businessName, token, user } = useAuth();
 	const [products, setProducts] = useState([]);
 	const [categories, setCategories] = useState([]);
 	const [selectedCategory, setSelectedCategory] = useState("Todos");
@@ -187,7 +187,7 @@ export const Home = () => {
 						background: "white", borderRadius: "12px", padding: "0.75rem 1.25rem",
 						boxShadow: "var(--shadow-sm)", fontSize: "0.9rem", color: "var(--color-text-muted)"
 					}}>
-						<span style={{ fontWeight: 700, color: "var(--color-text-main)" }}>GreenMart POS</span>
+						<span style={{ fontWeight: 700, color: "var(--color-text-main)" }}>{businessName} POS</span>
 						<span>·</span>
 						<span>Cajero: {user?.name || 'Admin'}</span>
 					</div>

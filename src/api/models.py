@@ -49,6 +49,7 @@ class User(db.Model):
         return {
             "id": self.id,
             "business_id": self.business_id,
+            "business_name": self.business.name if self.business else "",
             "name": self.name,
             "email": self.email,
             "role": self.role,

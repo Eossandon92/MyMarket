@@ -47,10 +47,11 @@ export const AuthProvider = ({ children }) => {
 
     // Convenience: the active business_id
     const businessId = user?.business_id ?? null;
+    const businessName = user?.business_name ?? "Sistema POS";
     const isSuperAdmin = user?.role === "superadmin";
 
     return (
-        <AuthContext.Provider value={{ user, token, businessId, isSuperAdmin, login, logout, loading, isAuthenticated: !!token }}>
+        <AuthContext.Provider value={{ user, token, businessId, businessName, isSuperAdmin, login, logout, loading, isAuthenticated: !!token }}>
             {children}
         </AuthContext.Provider>
     );

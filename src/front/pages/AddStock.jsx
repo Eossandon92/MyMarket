@@ -237,14 +237,13 @@ export const AddStock = () => {
         } catch (error) {
             console.error("Error bulk updating stock", error);
             setErrorMsg("Error de conexión");
-        } finally {
             setIsLoading(false);
         }
     };
 
     // --- AI Excel Functions ---
     const handleExcelUpload = async (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files?.[0];
         if (!file) return;
 
         setIsProcessingExcel(true);
@@ -284,16 +283,15 @@ export const AddStock = () => {
         newItems.splice(index, 1);
         setAiPreviewItems(newItems);
     };
-
     const confirmAIExcelImport = async () => {
         if (!aiPreviewItems || aiPreviewItems.length === 0) return;
 
         setIsProcessingExcel(true);
         setExcelError("");
+        setExcelSuccess("");
 
         try {
             const backendUrl = import.meta.env.VITE_BACKEND_URL;
-            // Endpoint /inventory/confirm expects { items: [...] }
             const res = await fetch(`${backendUrl}/api/inventory/confirm`, {
                 method: "POST",
                 headers: {
@@ -320,6 +318,7 @@ export const AddStock = () => {
             setIsProcessingExcel(false);
         }
     };
+
 
     return (
         <div style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto", fontFamily: "Inter, sans-serif" }}>
@@ -648,7 +647,6 @@ export const AddStock = () => {
                                     <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
                                         <thead style={{ background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }}>
                                             <tr>
-                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>#</th>
                                                 <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Producto</th>
                                                 <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Categoría (IA)</th>
                                                 <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>P. Venta</th>
@@ -659,7 +657,6 @@ export const AddStock = () => {
                                         <tbody>
                                             {aiPreviewItems.map((item, idx) => (
                                                 <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                                                    <td style={{ padding: "0.75rem 1rem", color: "#94a3b8" }}>{item.barcode || '-'}</td>
                                                     <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#0f172a" }}>{item.name}</td>
                                                     <td style={{ padding: "0.75rem 1rem" }}>
                                                         <span style={{ background: "#e0f2fe", color: "#0284c7", padding: "0.2rem 0.5rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 600 }}>{item.category_name}</span>
@@ -675,7 +672,7 @@ export const AddStock = () => {
                                             ))}
                                             {aiPreviewItems.length === 0 && (
                                                 <tr>
-                                                    <td colSpan="6" style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>No hay productos en la lista.</td>
+                                                    <td colSpan="5" style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>No hay productos en la lista.</td>
                                                 </tr>
                                             )}
                                         </tbody>

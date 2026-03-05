@@ -13,6 +13,8 @@ export const ProductMaintenance = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Default empty form state
   const initialFormState = {
@@ -373,6 +375,19 @@ export const ProductMaintenance = () => {
     return matchesCategory && matchesSearch;
   });
 
+  // Reset pagination if filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
+
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentProducts = filteredProducts.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   return (
     <div className="maintenance-container" style={{ position: "fixed", inset: 0, overflowY: "auto", padding: "2rem", paddingBottom: "5rem", fontFamily: "var(--font-family-base)", background: "var(--color-bg-main)", zIndex: 100 }}>
 
@@ -460,8 +475,8 @@ export const ProductMaintenance = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
+            {currentProducts.length > 0 ? (
+              currentProducts.map((product) => (
                 <tr key={product.id} style={{ borderBottom: "1px solid var(--border-color)", transition: "background-color 0.2s" }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#F8FAFC"} onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
                   <td style={{ padding: "1rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "500" }}>#{product.id}</td>
                   <td style={{ padding: "1rem 1.5rem" }}>
@@ -513,6 +528,35 @@ export const ProductMaintenance = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", marginTop: "1.5rem", gap: "1rem" }}>
+          <button
+            onClick={() => paginate(currentPage - 1)}
+            disabled={currentPage === 1}
+            style={{
+              padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border-color)", background: currentPage === 1 ? "#F1F5F9" : "white",
+              color: currentPage === 1 ? "#94A3B8" : "var(--color-primary)", fontWeight: "600", cursor: currentPage === 1 ? "not-allowed" : "pointer"
+            }}
+          >
+            Anterior
+          </button>
+          <span style={{ color: "var(--color-text-muted)", fontWeight: "500", fontSize: "0.95rem" }}>
+            Página <strong style={{ color: "var(--color-text-main)" }}>{currentPage}</strong> de {totalPages}
+          </span>
+          <button
+            onClick={() => paginate(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            style={{
+              padding: "0.5rem 1rem", borderRadius: "8px", border: "1px solid var(--border-color)", background: currentPage === totalPages ? "#F1F5F9" : "white",
+              color: currentPage === totalPages ? "#94A3B8" : "var(--color-primary)", fontWeight: "600", cursor: currentPage === totalPages ? "not-allowed" : "pointer"
+            }}
+          >
+            Siguiente
+          </button>
+        </div>
+      )}
 
       {/* Basic Bootstrap Modal Structure */}
       {isModalOpen && (
