@@ -3,7 +3,7 @@ import { Plus, Trash2, Search, Save, Package } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import useBarcodeScanner from "../hooks/useBarcodeScanner";
 
-const PromotionsMaintenance = () => {
+export const PromotionsMaintenance = () => {
     const { token, businessId } = useAuth();
     const [products, setProducts] = useState([]);
     const [promotions, setPromotions] = useState([]);
@@ -318,5 +318,3 @@ const PromotionsMaintenance = () => {
         </div>
     );
 };
-
-export default PromotionsMaintenance;
