@@ -15,6 +15,7 @@ export const ProductMaintenance = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [enlargedImage, setEnlargedImage] = useState(null);
 
   // Default empty form state
   const initialFormState = {
@@ -481,7 +482,15 @@ export const ProductMaintenance = () => {
                   <td style={{ padding: "1rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "500" }}>#{product.id}</td>
                   <td style={{ padding: "1rem 1.5rem" }}>
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border-color)" }} />
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        onClick={() => setEnlargedImage(product.image_url)}
+                        style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border-color)", cursor: "pointer", transition: "transform 0.2s" }}
+                        onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+                        onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+                        title="Ver imagen grande"
+                      />
                     ) : (
                       <div style={{ width: "48px", height: "48px", backgroundColor: "#F1F5F9", borderRadius: "8px", border: "1px solid var(--border-color)" }}></div>
                     )}
@@ -737,6 +746,35 @@ export const ProductMaintenance = () => {
           </div>
         </>
       )}
+
+      {/* Enlarged Image Modal */}
+      {enlargedImage && (
+        <div
+          onClick={() => setEnlargedImage(null)}
+          style={{
+            position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.8)", zIndex: 1050,
+            display: "flex", justifyContent: "center", alignItems: "center", cursor: "zoom-out"
+          }}
+        >
+          <img
+            src={enlargedImage}
+            alt="Producto enlarge"
+            style={{ maxWidth: "90%", maxHeight: "90vh", borderRadius: "12px", boxShadow: "0 10px 25px rgba(0,0,0,0.5)" }}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setEnlargedImage(null)}
+            style={{
+              position: "absolute", top: "20px", right: "20px", background: "white", border: "none",
+              borderRadius: "50%", width: "40px", height: "40px", fontSize: "1.5rem", fontWeight: "bold",
+              cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", color: "#333"
+            }}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
     </div>
   );
 };
