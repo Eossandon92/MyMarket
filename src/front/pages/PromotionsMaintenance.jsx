@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Search, Save, Package, Printer } from "lucide-react";
+import { Plus, Trash2, Search, Save, Package, Printer, Copy } from "lucide-react";
 import Barcode from "react-barcode";
 import { useAuth } from "../context/AuthContext";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
@@ -9,19 +9,26 @@ export const PromotionsMaintenance = () => {
     const [products, setProducts] = useState([]);
     const [promotions, setPromotions] = useState([]);
 
-    // New Promo Form State
     const [promoName, setPromoName] = useState("");
     const [promoPrice, setPromoPrice] = useState("");
+    const [promoBarcode, setPromoBarcode] = useState("");
     const [promoItems, setPromoItems] = useState([]); // { product_id, quantity, name, price }
 
     // Search State
     const [searchTerm, setSearchTerm] = useState("");
     const searchInputRef = useRef(null);
 
+    const generateRandomBarcode = () => {
+        // Generates a random 13 digit number starting with 9
+        const ran = "9" + Array.from({ length: 12 }, () => Math.floor(Math.random() * 10)).join('');
+        setPromoBarcode(ran);
+    };
+
     useEffect(() => {
         if (businessId && token) {
             fetchProducts();
             fetchPromotions();
+            generateRandomBarcode();
         }
     }, [businessId, token]);
 
@@ -109,6 +116,7 @@ export const PromotionsMaintenance = () => {
                 body: JSON.stringify({
                     name: promoName.trim(),
                     price: parseFloat(promoPrice),
+                    barcode: promoBarcode,
                     items: promoItems.map(i => ({ product_id: i.product_id, quantity: i.quantity }))
                 })
             });
@@ -117,6 +125,7 @@ export const PromotionsMaintenance = () => {
                 alert("Promoción guardada exitosamente");
                 setPromoName("");
                 setPromoPrice("");
+                generateRandomBarcode();
                 setPromoItems([]);
                 fetchPromotions();
             } else {
@@ -226,13 +235,26 @@ export const PromotionsMaintenance = () => {
                         </div>
                         <div style={{ flex: 1 }}>
                             <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.9rem" }}>Código de Barras</label>
-                            <input
-                                type="text"
-                                disabled={true}
-                                value=""
-                                placeholder="(Se generará automáticamente)"
-                                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "1rem", background: "#f1f5f9", cursor: "not-allowed", color: "#64748b" }}
-                            />
+                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                                <input
+                                    type="text"
+                                    disabled={true}
+                                    value={promoBarcode}
+                                    placeholder="(Generando...)"
+                                    style={{ flex: 1, padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "1rem", background: "#f1f5f9", cursor: "not-allowed", color: "#334155", fontWeight: "600" }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(promoBarcode);
+                                        alert("Código copiado al portapapeles: " + promoBarcode);
+                                    }}
+                                    style={{ padding: "0 1rem", background: "#e2e8f0", border: "none", borderRadius: "8px", color: "#475569", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                    title="Copiar Código"
+                                >
+                                    <Copy size={20} />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
