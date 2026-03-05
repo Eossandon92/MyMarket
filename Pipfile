@@ -29,6 +29,8 @@ sqlalchemy = "*"
 pillow = "*"
 thefuzz = "*"
 google-genai = "*"
+pandas = "*"
+openpyxl = "*"
 
 [requires]
 python_version = "3.13"

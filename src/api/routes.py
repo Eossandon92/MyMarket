@@ -178,6 +178,64 @@ def get_current_user():
     return jsonify({"user": user.serialize()}), 200
 
 
+import threading
+
+def fetch_image_for_product(product_name):
+    """Helper function to scrape Bing for an image URL based on a product name."""
+    try:
+        search_query = product_name
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+        }
+        formatted_query = search_query.replace(' ', '+')
+        url = f"https://www.bing.com/images/search?q={formatted_query}"
+        
+        res = requests.get(url, headers=headers)
+        if res.ok:
+            soup = BeautifulSoup(res.text, 'html.parser')
+            a_tags = soup.find_all('a', class_='iusc')
+            for a in a_tags:
+                m_data = a.get('m')
+                if m_data:
+                    try:
+                        data = json.loads(m_data)
+                        image_url = data.get('turl')
+                        if image_url:
+                            return image_url
+                    except:
+                        pass
+                        
+        return f"https://placehold.co/512x512?text={formatted_query}"
+    except Exception as e:
+        print(f"Error scraping image for {product_name}:", e)
+        return "https://placehold.co/512x512?text=Error"
+
+
+def process_images_in_background(app_context, products_data):
+    """Background worker that fetches images for newly created products."""
+    app_context.push()
+    from api.models import db, Product
+    try:
+        for p_data in products_data:
+            product_id = p_data['id']
+            product_name = p_data['name']
+            
+            # Fetch image URL
+            image_url = fetch_image_for_product(product_name)
+            
+            # Update product in database
+            product = Product.query.get(product_id)
+            if product:
+                product.image_url = image_url
+                db.session.commit()
+                print(f"[Background Task] Updated image for product {product.id} ({product.name})")
+    except Exception as e:
+        db.session.rollback()
+        print(f"[Background Task] Error updating images:", e)
+    finally:
+        db.session.remove()
+
+
 @api.route('/generate-image', methods=['POST'])
 def generate_image():
     data = request.json
@@ -186,44 +244,13 @@ def generate_image():
         
     try:
         product_name = data['product_name']
-        
-        search_query = product_name
-        
-        try:
-            # Bypass all API limits by directly scraping Bing Images
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-            }
-            
-            formatted_query = search_query.replace(' ', '+')
-            url = f"https://www.bing.com/images/search?q={formatted_query}"
-            
-            res = requests.get(url, headers=headers)
-            
-            if res.ok:
-                soup = BeautifulSoup(res.text, 'html.parser')
-                
-                # Bing stores the high-res image URL in the 'm' attribute of 'a' tags with class 'iusc'
-                a_tags = soup.find_all('a', class_='iusc')
-                
-                for a in a_tags:
-                    m_data = a.get('m')
-                    if m_data:
-                        try:
-                            # Use 'turl' (Thumbnail URL proxyed by Bing) to avoid 403 Forbidden hotlink blocks from murl
-                            data = json.loads(m_data)
-                            image_url = data.get('turl')
-                            if image_url:
-                                return jsonify({"image_url": image_url}), 200
-                        except:
-                            pass
-            
-            # Fallback if Yahoo fails to load anything valid
-            return jsonify({"msg": "No se encontraron imágenes", "image_url": f"https://placehold.co/512x512?text={formatted_query}"}), 200
-
-        except Exception as search_e:
-            print("Error scraping images:", search_e)
-            return jsonify({"msg": "Error en servidor", "image_url": "https://placehold.co/512x512?text=Error"}), 500
+        image_url = fetch_image_for_product(product_name)
+        if image_url == "https://placehold.co/512x512?text=Error":
+            return jsonify({"msg": "Error en servidor", "image_url": image_url}), 500
+        elif image_url.startswith("https://placehold.co"):
+            return jsonify({"msg": "No se encontraron imágenes", "image_url": image_url}), 200
+        else:
+            return jsonify({"image_url": image_url}), 200
         
     except Exception as e:
         print("Error generating image:", e)
@@ -810,6 +837,7 @@ def upload_inventory_excel():
 @api.route('/inventory/confirm', methods=['POST'])
 @jwt_required()
 def confirm_inventory():
+    from app import app
     claims = get_jwt()
     business_id = claims.get('business_id')
     if not business_id:
@@ -820,6 +848,7 @@ def confirm_inventory():
         return jsonify({"msg": "No items provided"}), 400
         
     items = data['items']
+    inserted_products_data = []
     
     try:
         for item in items:
@@ -847,9 +876,26 @@ def confirm_inventory():
                 category=category.name  # Note: The Product model schema uses category string, not id
             )
             db.session.add(product)
+            db.session.flush() # Need flush to get the id for the background task
+            
+            inserted_products_data.append({
+                "id": product.id,
+                "name": product.name
+            })
 
         db.session.commit()
-        return jsonify({"msg": f"Se insertaron {len(items)} productos con éxito"}), 201
+        
+        # Fire background task to fetch images
+        if inserted_products_data:
+            app_context = app.app_context()
+            thread = threading.Thread(
+                target=process_images_in_background,
+                args=(app_context, inserted_products_data)
+            )
+            thread.daemon = True
+            thread.start()
+            
+        return jsonify({"msg": f"Se insertaron {len(items)} productos con éxito, imágenes descargándose en segundo plano."}), 201
         
     except Exception as e:
         db.session.rollback()

@@ -242,6 +242,85 @@ export const AddStock = () => {
         }
     };
 
+    // --- AI Excel Functions ---
+    const handleExcelUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsProcessingExcel(true);
+        setExcelError("");
+        setExcelSuccess("");
+        setAiPreviewItems(null);
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const backendUrl = import.meta.env.VITE_BACKEND_URL;
+            const res = await fetch(`${backendUrl}/api/inventory/upload`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${token}` },
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setAiPreviewItems(data.items);
+            } else {
+                const err = await res.json();
+                setExcelError(err.msg || "Error al procesar el Excel con IA.");
+            }
+        } catch (err) {
+            console.error(err);
+            setExcelError("Error de conexión al procesar el Excel.");
+        } finally {
+            setIsProcessingExcel(false);
+            if (excelFileInputRef.current) excelFileInputRef.current.value = "";
+        }
+    };
+
+    const removePreviewItem = (index) => {
+        const newItems = [...aiPreviewItems];
+        newItems.splice(index, 1);
+        setAiPreviewItems(newItems);
+    };
+
+    const confirmAIExcelImport = async () => {
+        if (!aiPreviewItems || aiPreviewItems.length === 0) return;
+
+        setIsProcessingExcel(true);
+        setExcelError("");
+
+        try {
+            const backendUrl = import.meta.env.VITE_BACKEND_URL;
+            // Endpoint /inventory/confirm expects { items: [...] }
+            const res = await fetch(`${backendUrl}/api/inventory/confirm`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ items: aiPreviewItems })
+            });
+
+            if (res.ok) {
+                setExcelSuccess(`¡✅ Se ingresaron ${aiPreviewItems.length} productos con éxito!`);
+                setTimeout(() => {
+                    resetState();
+                    fetchProducts(); // refresh cache
+                }, 2500);
+            } else {
+                const err = await res.json();
+                setExcelError(err.msg || "Error al confirmar la importación.");
+            }
+        } catch (error) {
+            console.error(error);
+            setExcelError("Error de conexión al guardar los productos.");
+        } finally {
+            setIsProcessingExcel(false);
+        }
+    };
+
     return (
         <div style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto", fontFamily: "Inter, sans-serif" }}>
 
