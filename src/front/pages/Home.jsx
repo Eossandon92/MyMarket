@@ -333,13 +333,13 @@ export const Home = () => {
 					) : (
 						cart.map((item) => (
 							<div key={item.id} style={{
-								display: "flex", alignItems: "center", gap: "0.5rem",
-								padding: "0.75rem", background: "#F8FAFC", borderRadius: "12px"
+								display: "flex", alignItems: "center", gap: "0.4rem",
+								padding: "0.5rem", background: "#F8FAFC", borderRadius: "12px"
 							}}>
 								<img
-									src={item.image_url || `https://ui-avatars.com/api/?name=${item.name}&background=E8F8F5&color=2ECC71&size=56`}
+									src={item.image_url || `https://ui-avatars.com/api/?name=${item.name}&background=E8F8F5&color=2ECC71&size=40`}
 									alt={item.name}
-									style={{ width: "44px", height: "44px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
+									style={{ width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
 								/>
 								<div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 									<p style={{
@@ -352,20 +352,20 @@ export const Home = () => {
 									<p style={{ fontSize: "0.8rem", color: "var(--color-primary)", fontWeight: "700" }}>${item.price.toLocaleString("es-CL")}</p>
 								</div>
 
-								<div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
-									<button onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "1px solid var(--border-color)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+								<div style={{ display: "flex", alignItems: "center", gap: "0.2rem", flexShrink: 0 }}>
+									<button onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "1px solid var(--border-color)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
 										<Minus size={12} />
 									</button>
 									<span style={{ fontWeight: "700", minWidth: "16px", textAlign: "center", fontSize: "0.9rem" }}>{item.quantity}</span>
-									<button onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "1px solid var(--border-color)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+									<button onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "1px solid var(--border-color)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
 										<Plus size={12} />
 									</button>
-									<button onClick={() => handleRemoveFromCart(item.id)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "none", background: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-danger)", marginLeft: "0.2rem" }}>
+									<button onClick={() => handleRemoveFromCart(item.id)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "none", background: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-danger)", marginLeft: "0.1rem", padding: 0 }}>
 										<Trash2 size={12} />
 									</button>
 								</div>
 
-								<div style={{ fontWeight: "700", fontSize: "0.9rem", width: "55px", textAlign: "right", flexShrink: 0 }}>
+								<div style={{ fontWeight: "700", fontSize: "0.9rem", minWidth: "45px", textAlign: "right", flexShrink: 0 }}>
 									${(item.price * item.quantity).toLocaleString("es-CL")}
 								</div>
 							</div>
