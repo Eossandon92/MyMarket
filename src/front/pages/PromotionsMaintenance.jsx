@@ -326,11 +326,6 @@ export const PromotionsMaintenance = () => {
                                     <div>
                                         <h4 style={{ margin: 0, fontSize: "1.1rem", fontWeight: "700", color: "var(--color-text-main)" }}>{promo.name}</h4>
                                         <span style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--color-primary)" }}>${promo.price.toLocaleString("es-CL")}</span>
-                                        {promo.barcode && (
-                                            <div style={{ marginTop: "0.5rem", background: "#f8fafc", padding: "0.5rem", borderRadius: "8px", display: "inline-block" }} id={`barcode-wrapper-${promo.id}`}>
-                                                <Barcode value={promo.barcode} format="EAN13" width={1.5} height={40} fontSize={14} displayValue={true} />
-                                            </div>
-                                        )}
                                     </div>
                                     <div style={{ display: "flex", gap: "0.5rem" }}>
                                         <button onClick={() => handlePrintBarcode(promo)} title="Imprimir Etiqueta" style={{ background: "#e2e8f0", border: "none", width: "32px", height: "32px", borderRadius: "8px", color: "#475569", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -341,6 +336,14 @@ export const PromotionsMaintenance = () => {
                                         </button>
                                     </div>
                                 </div>
+
+                                {promo.barcode && (
+                                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
+                                        <div style={{ background: "#f8fafc", padding: "0.5rem", borderRadius: "8px", display: "inline-flex" }} id={`barcode-wrapper-${promo.id}`}>
+                                            <Barcode value={promo.barcode} format="CODE128" width={1.5} height={40} fontSize={14} displayValue={true} />
+                                        </div>
+                                    </div>
+                                )}
                                 <div style={{ fontSize: "0.85rem", color: "#64748b", background: "#f8fafc", padding: "0.5rem", borderRadius: "6px" }}>
                                     <strong>Contenido:</strong>
                                     <ul style={{ margin: "0.25rem 0 0 1rem", padding: 0 }}>
