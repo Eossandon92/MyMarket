@@ -425,6 +425,14 @@ p {
   font-weight: 600;
   margin-bottom: 0.25rem;
   color: var(--color-text-main);
+  /* Truncate long text with ellipsis after 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 2.6rem; /* Ensure consistent spacing even for 1-line titles */
 }
 
 .product-subtitle {
