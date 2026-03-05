@@ -333,7 +333,7 @@ export const Home = () => {
 					) : (
 						cart.map((item) => (
 							<div key={item.id} style={{
-								display: "flex", alignItems: "center", gap: "0.75rem",
+								display: "flex", alignItems: "center", gap: "0.5rem",
 								padding: "0.75rem", background: "#F8FAFC", borderRadius: "12px"
 							}}>
 								<img
@@ -341,23 +341,33 @@ export const Home = () => {
 									alt={item.name}
 									style={{ width: "44px", height: "44px", borderRadius: "8px", objectFit: "cover", flexShrink: 0 }}
 								/>
-								<div style={{ flex: 1, minWidth: 0 }}>
-									<p style={{ fontSize: "0.9rem", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</p>
+								<div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+									<p style={{
+										fontSize: "0.85rem", fontWeight: "600", color: "var(--color-text-main)",
+										display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", textOverflow: "ellipsis",
+										lineHeight: "1.2", marginBottom: "0.2rem"
+									}}>
+										{item.name}
+									</p>
 									<p style={{ fontSize: "0.8rem", color: "var(--color-primary)", fontWeight: "700" }}>${item.price.toLocaleString("es-CL")}</p>
 								</div>
-								<div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
-									<button onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)} style={{ width: "26px", height: "26px", borderRadius: "7px", border: "1px solid var(--border-color)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-										<Minus size={13} />
+
+								<div style={{ display: "flex", alignItems: "center", gap: "0.3rem", flexShrink: 0 }}>
+									<button onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "1px solid var(--border-color)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+										<Minus size={12} />
 									</button>
-									<span style={{ fontWeight: "700", minWidth: "20px", textAlign: "center", fontSize: "0.95rem" }}>{item.quantity}</span>
-									<button onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)} style={{ width: "26px", height: "26px", borderRadius: "7px", border: "1px solid var(--border-color)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-										<Plus size={13} />
+									<span style={{ fontWeight: "700", minWidth: "16px", textAlign: "center", fontSize: "0.9rem" }}>{item.quantity}</span>
+									<button onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "1px solid var(--border-color)", background: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+										<Plus size={12} />
 									</button>
-									<button onClick={() => handleRemoveFromCart(item.id)} style={{ width: "26px", height: "26px", borderRadius: "7px", border: "none", background: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-danger)" }}>
-										<Trash2 size={13} />
+									<button onClick={() => handleRemoveFromCart(item.id)} style={{ width: "24px", height: "24px", borderRadius: "6px", border: "none", background: "#FEE2E2", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-danger)", marginLeft: "0.2rem" }}>
+										<Trash2 size={12} />
 									</button>
 								</div>
-								<p style={{ fontWeight: "700", fontSize: "0.9rem", minWidth: "60px", textAlign: "right" }}>${(item.price * item.quantity).toLocaleString("es-CL")}</p>
+
+								<div style={{ fontWeight: "700", fontSize: "0.9rem", width: "55px", textAlign: "right", flexShrink: 0 }}>
+									${(item.price * item.quantity).toLocaleString("es-CL")}
+								</div>
 							</div>
 						))
 					)}
