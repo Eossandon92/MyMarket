@@ -995,16 +995,23 @@ def create_promotion():
         return jsonify({"msg": "Promotion must have at least one product"}), 400
 
     from api.models import Promotion, PromotionItem
+    import random
 
-    # Check if barcode already exists for another promotion
+    # Check if barcode already exists for another promotion, or generate one
     barcode = data.get('barcode')
-    if barcode:
+    if barcode and str(barcode).strip():
         barcode = str(barcode).strip()
         existing = Promotion.query.filter_by(business_id=business_id, barcode=barcode).first()
         if existing:
             return jsonify({"msg": "Esa caja/código de barras ya está asignada a otra promoción."}), 400
     else:
-        barcode = None
+        # Auto-generate a unique barcode
+        while True:
+            # Generate a 13 digit number, starting with 9 to pseudo-identify it locally
+            barcode = "9" + "".join([str(random.randint(0, 9)) for _ in range(12)])
+            existing = Promotion.query.filter_by(business_id=business_id, barcode=barcode).first()
+            if not existing:
+                break
 
     new_promo = Promotion(
         business_id=business_id,

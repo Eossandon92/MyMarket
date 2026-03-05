@@ -11,7 +11,6 @@ export const PromotionsMaintenance = () => {
     // New Promo Form State
     const [promoName, setPromoName] = useState("");
     const [promoPrice, setPromoPrice] = useState("");
-    const [promoBarcode, setPromoBarcode] = useState("");
     const [promoItems, setPromoItems] = useState([]); // { product_id, quantity, name, price }
 
     // Search State
@@ -109,7 +108,6 @@ export const PromotionsMaintenance = () => {
                 body: JSON.stringify({
                     name: promoName.trim(),
                     price: parseFloat(promoPrice),
-                    barcode: promoBarcode.trim() || null,
                     items: promoItems.map(i => ({ product_id: i.product_id, quantity: i.quantity }))
                 })
             });
@@ -118,7 +116,6 @@ export const PromotionsMaintenance = () => {
                 alert("Promoción guardada exitosamente");
                 setPromoName("");
                 setPromoPrice("");
-                setPromoBarcode("");
                 setPromoItems([]);
                 fetchPromotions();
             } else {
@@ -191,13 +188,13 @@ export const PromotionsMaintenance = () => {
                             />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.9rem" }}>Código de Barras (Opcional)</label>
+                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.9rem" }}>Código de Barras</label>
                             <input
                                 type="text"
-                                value={promoBarcode}
-                                onChange={(e) => setPromoBarcode(e.target.value)}
-                                placeholder="Escanea la caja aquí..."
-                                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "1rem" }}
+                                disabled={true}
+                                value=""
+                                placeholder="(Se generará automáticamente)"
+                                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "1rem", background: "#f1f5f9", cursor: "not-allowed", color: "#64748b" }}
                             />
                         </div>
                     </div>
