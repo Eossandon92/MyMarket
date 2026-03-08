@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Edit2, Trash2, PlusCircle, Scan, Search } from "lucide-react";
+import { ArrowLeft, Edit2, Trash2, PlusCircle, Scan, Search, LayoutGrid, List } from "lucide-react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { useAuth } from "../context/AuthContext";
 
@@ -16,6 +16,7 @@ export const ProductMaintenance = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [enlargedImage, setEnlargedImage] = useState(null);
+  const [viewMode, setViewMode] = useState("table"); // "table" or "grid"
 
   // Default empty form state
   const initialFormState = {
@@ -434,109 +435,237 @@ export const ProductMaintenance = () => {
         </div>
       </div>
 
-      {/* Category Pills Filter */}
-      <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", paddingBottom: "1.5rem", marginBottom: "0.5rem" }}>
-        {displayCategories.map((cat, idx) => (
+      {/* Category Pills Filter and View Toggle */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "1.5rem", marginBottom: "0.5rem", flexWrap: "wrap", gap: "1rem" }}>
+        <div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", flex: 1 }}>
+          {displayCategories.map((cat, idx) => (
+            <button
+              key={idx}
+              onClick={() => setSelectedCategory(cat)}
+              style={{
+                whiteSpace: "nowrap",
+                padding: "0.6rem 1.25rem",
+                borderRadius: "100px",
+                border: "none",
+                fontFamily: "var(--font-family-base)",
+                fontSize: "0.95rem",
+                fontWeight: selectedCategory === cat ? "700" : "500",
+                cursor: "pointer",
+                transition: "all 0.2s",
+                backgroundColor: selectedCategory === cat ? "var(--color-primary)" : "white",
+                color: selectedCategory === cat ? "white" : "var(--color-text-muted)",
+                boxShadow: selectedCategory === cat
+                  ? "0 4px 12px rgba(46, 204, 113, 0.35)"
+                  : "0 2px 4px rgba(0,0,0,0.02)",
+              }}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* View Toggle */}
+        <div style={{ display: "flex", background: "white", borderRadius: "8px", padding: "0.25rem", boxShadow: "var(--shadow-sm)", border: "1px solid var(--border-color)" }}>
           <button
-            key={idx}
-            onClick={() => setSelectedCategory(cat)}
+            onClick={() => setViewMode("table")}
             style={{
-              whiteSpace: "nowrap",
-              padding: "0.6rem 1.25rem",
-              borderRadius: "100px",
-              border: "none",
-              fontFamily: "var(--font-family-base)",
-              fontSize: "0.95rem",
-              fontWeight: selectedCategory === cat ? "700" : "500",
-              cursor: "pointer",
-              transition: "all 0.2s",
-              backgroundColor: selectedCategory === cat ? "var(--color-primary)" : "white",
-              color: selectedCategory === cat ? "white" : "var(--color-text-muted)",
-              boxShadow: selectedCategory === cat
-                ? "0 4px 12px rgba(46, 204, 113, 0.35)"
-                : "0 2px 4px rgba(0,0,0,0.02)",
+              display: "flex", alignItems: "center", justifyContent: "center", padding: "0.5rem 0.75rem", borderRadius: "6px",
+              background: viewMode === "table" ? "#F1F5F9" : "transparent",
+              color: viewMode === "table" ? "var(--color-primary)" : "var(--color-text-muted)",
+              border: "none", cursor: "pointer", transition: "all 0.2s"
             }}
+            title="Vista en Lista"
           >
-            {cat}
+            <List size={20} />
           </button>
-        ))}
+          <button
+            onClick={() => setViewMode("grid")}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center", padding: "0.5rem 0.75rem", borderRadius: "6px",
+              background: viewMode === "grid" ? "#F1F5F9" : "transparent",
+              color: viewMode === "grid" ? "var(--color-primary)" : "var(--color-text-muted)",
+              border: "none", cursor: "pointer", transition: "all 0.2s"
+            }}
+            title="Vista en Cuadrícula"
+          >
+            <LayoutGrid size={20} />
+          </button>
+        </div>
       </div>
 
-      <div className="table-container" style={{ backgroundColor: "var(--color-bg-card)", borderRadius: "var(--border-radius-lg)", boxShadow: "var(--shadow-md)", overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#F8FAFC", borderBottom: "2px solid var(--border-color)" }}>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>ID</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Imagen</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Nombre</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Categoría</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Precio</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Stock</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "right" }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentProducts.length > 0 ? (
-              currentProducts.map((product) => (
-                <tr key={product.id} style={{ borderBottom: "1px solid var(--border-color)", transition: "background-color 0.2s" }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#F8FAFC"} onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
-                  <td style={{ padding: "1rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "500" }}>#{product.id}</td>
-                  <td style={{ padding: "1rem 1.5rem" }}>
-                    {product.image_url ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        onClick={() => setEnlargedImage(product.image_url)}
-                        style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border-color)", cursor: "pointer", transition: "transform 0.2s" }}
+      {viewMode === "table" ? (
+        <div className="table-container" style={{ backgroundColor: "var(--color-bg-card)", borderRadius: "var(--border-radius-lg)", boxShadow: "var(--shadow-md)", overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#F8FAFC", borderBottom: "2px solid var(--border-color)" }}>
+                <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>ID</th>
+                <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Imagen</th>
+                <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Nombre</th>
+                <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Categoría</th>
+                <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Precio</th>
+                <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Stock</th>
+                <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "right" }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentProducts.length > 0 ? (
+                currentProducts.map((product) => (
+                  <tr key={product.id} style={{ borderBottom: "1px solid var(--border-color)", transition: "background-color 0.2s" }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#F8FAFC"} onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                    <td style={{ padding: "1rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "500" }}>#{product.id}</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          onClick={() => setEnlargedImage(product.image_url)}
+                          style={{ width: "48px", height: "48px", objectFit: "cover", borderRadius: "8px", border: "1px solid var(--border-color)", cursor: "pointer", transition: "transform 0.2s" }}
+                          onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+                          onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+                          title="Ver imagen grande"
+                        />
+                      ) : (
+                        <div style={{ width: "48px", height: "48px", backgroundColor: "#F1F5F9", borderRadius: "8px", border: "1px solid var(--border-color)" }}></div>
+                      )}
+                    </td>
+                    <td style={{ padding: "1rem 1.5rem", fontWeight: "600", color: "var(--color-text-main)", fontSize: "1.1rem" }}>{product.name}</td>
+                    <td style={{ padding: "1rem 1.5rem" }}>
+                      <span style={{ backgroundColor: "var(--color-primary-light)", color: "var(--color-primary)", padding: "0.25rem 0.75rem", borderRadius: "100px", fontSize: "0.85rem", fontWeight: "600" }}>
+                        {product.category}
+                      </span>
+                    </td>
+                    <td style={{ padding: "1rem 1.5rem", fontWeight: "700", fontSize: "1.1rem", color: "var(--color-text-main)" }}>${product.price}</td>
+                    <td style={{ padding: "1rem 1.5rem", fontWeight: "500", color: product.stock > 10 ? "var(--color-text-main)" : "var(--color-warning)" }}>
+                      {product.stock} {product.stock <= 10 && " (Bajo)"}
+                    </td>
+                    <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
+                      <button
+                        onClick={() => openEditModal(product)}
+                        style={{ background: "none", border: "none", color: "var(--color-secondary)", cursor: "pointer", padding: "0.5rem", marginRight: "0.5rem", transition: "transform 0.2s" }}
+                        title="Editar"
                         onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.1)"}
                         onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
-                        title="Ver imagen grande"
-                      />
-                    ) : (
-                      <div style={{ width: "48px", height: "48px", backgroundColor: "#F1F5F9", borderRadius: "8px", border: "1px solid var(--border-color)" }}></div>
-                    )}
-                  </td>
-                  <td style={{ padding: "1rem 1.5rem", fontWeight: "600", color: "var(--color-text-main)", fontSize: "1.1rem" }}>{product.name}</td>
-                  <td style={{ padding: "1rem 1.5rem" }}>
-                    <span style={{ backgroundColor: "var(--color-primary-light)", color: "var(--color-primary)", padding: "0.25rem 0.75rem", borderRadius: "100px", fontSize: "0.85rem", fontWeight: "600" }}>
-                      {product.category}
-                    </span>
-                  </td>
-                  <td style={{ padding: "1rem 1.5rem", fontWeight: "700", fontSize: "1.1rem", color: "var(--color-text-main)" }}>${product.price}</td>
-                  <td style={{ padding: "1rem 1.5rem", fontWeight: "500", color: product.stock > 10 ? "var(--color-text-main)" : "var(--color-warning)" }}>
-                    {product.stock} {product.stock <= 10 && " (Bajo)"}
-                  </td>
-                  <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
-                    <button
-                      onClick={() => openEditModal(product)}
-                      style={{ background: "none", border: "none", color: "var(--color-secondary)", cursor: "pointer", padding: "0.5rem", marginRight: "0.5rem", transition: "transform 0.2s" }}
-                      title="Editar"
-                      onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.1)"}
-                      onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
-                    >
-                      <Edit2 size={20} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      style={{ background: "none", border: "none", color: "var(--color-danger)", cursor: "pointer", padding: "0.5rem", transition: "transform 0.2s" }}
-                      title="Eliminar"
-                      onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.1)"}
-                      onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
-                    >
-                      <Trash2 size={20} />
-                    </button>
+                      >
+                        <Edit2 size={20} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        style={{ background: "none", border: "none", color: "var(--color-danger)", cursor: "pointer", padding: "0.5rem", transition: "transform 0.2s" }}
+                        title="Eliminar"
+                        onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.1)"}
+                        onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="7" style={{ padding: "3rem", textAlign: "center", color: "var(--color-text-muted)", fontSize: "1.1rem" }}>
+                    No hay productos registrados en el catálogo.
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="7" style={{ padding: "3rem", textAlign: "center", color: "var(--color-text-muted)", fontSize: "1.1rem" }}>
-                  No hay productos registrados en el catálogo.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+          gap: "1.25rem",
+          alignContent: "start",
+        }}>
+          {currentProducts.length > 0 ? currentProducts.map((product) => (
+            <article
+              key={product.id}
+              style={{
+                background: "white",
+                borderRadius: "var(--border-radius-md)",
+                padding: "1rem",
+                border: "1px solid var(--border-color)",
+                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                display: "flex",
+                flexDirection: "column",
+                boxShadow: "var(--shadow-sm)",
+                position: "relative",
+                minHeight: "260px"
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.transform = "translateY(-3px)";
+                e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                e.currentTarget.style.borderColor = "var(--color-primary)";
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                e.currentTarget.style.borderColor = "var(--border-color)";
+              }}
+            >
+              <div style={{
+                height: "120px",
+                background: "#F8FAFC",
+                borderRadius: "var(--border-radius-sm)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: "0.75rem",
+                overflow: "hidden",
+                cursor: product.image_url ? "pointer" : "default"
+              }} onClick={() => product.image_url && setEnlargedImage(product.image_url)}>
+                <img
+                  src={product.image_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(product.name)}&background=E8F8F5&color=2ECC71&size=120`}
+                  alt={product.name}
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                />
+              </div>
+              <p style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--color-text-main)", marginBottom: "0.25rem", lineHeight: "1.3" }}>
+                {product.name}
+              </p>
+              <p style={{ fontSize: "0.8rem", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>
+                {product.category}
+              </p>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
+                <span style={{ fontWeight: "800", fontSize: "1.1rem", color: "var(--color-text-main)" }}>
+                  ${product.price}
+                </span>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ fontSize: "0.75rem", color: product.stock > 10 ? "var(--color-text-muted)" : "var(--color-warning)", fontWeight: "600", display: "block" }}>
+                    Stock: {product.stock}
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick actions overlay */}
+              <div style={{ position: "absolute", top: "0.5rem", right: "0.5rem", display: "flex", gap: "0.3rem" }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); openEditModal(product); }}
+                  style={{ background: "white", border: "1px solid var(--border-color)", borderRadius: "6px", width: "28px", height: "28px", color: "var(--color-secondary)", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                  title="Editar"
+                  onMouseOver={(e) => { e.currentTarget.style.color = "var(--color-primary)"; e.currentTarget.style.borderColor = "var(--color-primary)"; }}
+                  onMouseOut={(e) => { e.currentTarget.style.color = "var(--color-secondary)"; e.currentTarget.style.borderColor = "var(--border-color)"; }}
+                >
+                  <Edit2 size={14} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDelete(product.id); }}
+                  style={{ background: "white", border: "1px solid var(--border-color)", borderRadius: "6px", width: "28px", height: "28px", color: "var(--color-danger)", cursor: "pointer", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}
+                  title="Eliminar"
+                  onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#FEE2E2"; e.currentTarget.style.borderColor = "#FCA5A5"; }}
+                  onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "white"; e.currentTarget.style.borderColor = "var(--border-color)"; }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </article>
+          )) : (
+            <div style={{ gridColumn: "1 / -1", padding: "3rem", textAlign: "center", color: "var(--color-text-muted)", fontSize: "1.1rem" }}>
+              No hay productos registrados en el catálogo.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pagination Controls */}
       {totalPages > 1 && (

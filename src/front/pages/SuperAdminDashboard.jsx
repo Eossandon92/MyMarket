@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Building2, Plus, Mail, Lock, ShieldAlert, LogOut, CheckCircle, Search, Store } from "lucide-react";
+import { Building2, Plus, Mail, Lock, ShieldAlert, LogOut, CheckCircle, Search, Store, User } from "lucide-react";
 
 export const SuperAdminDashboard = () => {
     const { token, logout, user, isSuperAdmin } = useAuth();
