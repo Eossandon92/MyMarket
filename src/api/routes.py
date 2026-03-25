@@ -737,16 +737,17 @@ def get_balance_report():
         if day_key not in daily_map:
             daily_map[day_key] = {"day": day_key, "revenue": 0.0, "cost": 0.0, "profit": 0.0}
 
+        order_normal_revenue = 0.0
+        order_real_revenue = 0.0
+
         for item in order.items:
             item_revenue = item.price_at_time * item.quantity
             total_revenue += item_revenue
             daily_map[day_key]["revenue"] += item_revenue
 
-            # Calculate promo loss/discount
+            order_real_revenue += item_revenue
             if item.product:
-                normal_expected_revenue = item.product.price * item.quantity
-                if normal_expected_revenue > item_revenue:
-                    total_promotional_loss += (normal_expected_revenue - item_revenue)
+                order_normal_revenue += (item.product.price * item.quantity)
 
             # Calculate cost
             item_cost = 0.0
@@ -770,6 +771,9 @@ def get_balance_report():
             product_profits[pid]["qty"] += item.quantity
             if item.product and item.product.cost_price is not None:
                 product_profits[pid]["has_cost"] = True
+
+        if order_normal_revenue > order_real_revenue:
+            total_promotional_loss += (order_normal_revenue - order_real_revenue)
 
     gross_profit = total_revenue - total_cost
     margin_percent = round((gross_profit / total_revenue * 100), 1) if total_revenue > 0 else 0.0

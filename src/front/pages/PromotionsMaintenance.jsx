@@ -220,42 +220,17 @@ export const PromotionsMaintenance = () => {
                         />
                     </div>
 
-                    <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.9rem" }}>Precio del Pack ($)</label>
-                            <input
-                                type="number"
-                                required
-                                min="0"
-                                value={promoPrice}
-                                onChange={(e) => setPromoPrice(e.target.value)}
-                                placeholder="Precio oferta"
-                                style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "1rem" }}
-                            />
-                        </div>
-                        <div style={{ flex: 1 }}>
-                            <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.9rem" }}>Código de Barras</label>
-                            <div style={{ display: "flex", gap: "0.5rem" }}>
-                                <input
-                                    type="text"
-                                    disabled={true}
-                                    value={promoBarcode}
-                                    placeholder="(Generando...)"
-                                    style={{ flex: 1, padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "1rem", background: "#f1f5f9", cursor: "not-allowed", color: "#334155", fontWeight: "600" }}
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(promoBarcode);
-                                        alert("Código copiado al portapapeles: " + promoBarcode);
-                                    }}
-                                    style={{ padding: "0 1rem", background: "#e2e8f0", border: "none", borderRadius: "8px", color: "#475569", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                                    title="Copiar Código"
-                                >
-                                    <Copy size={20} />
-                                </button>
-                            </div>
-                        </div>
+                    <div style={{ marginBottom: "1rem" }}>
+                        <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", fontSize: "0.9rem" }}>Precio del Pack ($)</label>
+                        <input
+                            type="number"
+                            required
+                            min="0"
+                            value={promoPrice}
+                            onChange={(e) => setPromoPrice(e.target.value)}
+                            placeholder="Precio oferta"
+                            style={{ width: "100%", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)", fontSize: "1rem" }}
+                        />
                     </div>
 
                     {/* Product Search */}
@@ -350,22 +325,13 @@ export const PromotionsMaintenance = () => {
                                         <span style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--color-primary)" }}>${promo.price.toLocaleString("es-CL")}</span>
                                     </div>
                                     <div style={{ display: "flex", gap: "0.5rem" }}>
-                                        <button onClick={() => handlePrintBarcode(promo)} title="Imprimir Etiqueta" style={{ background: "#e2e8f0", border: "none", width: "32px", height: "32px", borderRadius: "8px", color: "#475569", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                            <Printer size={16} />
-                                        </button>
                                         <button onClick={() => handleDeletePromotion(promo.id)} title="Eliminar Pack" style={{ background: "#fee2e2", border: "none", width: "32px", height: "32px", borderRadius: "8px", color: "#ef4444", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                             <Trash2 size={16} />
                                         </button>
                                     </div>
                                 </div>
 
-                                {promo.barcode && (
-                                    <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
-                                        <div style={{ background: "#f8fafc", padding: "0.5rem", borderRadius: "8px", display: "inline-flex" }} id={`barcode-wrapper-${promo.id}`}>
-                                            <Barcode value={promo.barcode} format="CODE128" width={1.5} height={40} fontSize={14} displayValue={true} />
-                                        </div>
-                                    </div>
-                                )}
+
                                 <div style={{ fontSize: "0.85rem", color: "#64748b", background: "#f8fafc", padding: "0.5rem", borderRadius: "6px" }}>
                                     <strong>Contenido:</strong>
                                     <ul style={{ margin: "0.25rem 0 0 1rem", padding: 0 }}>
