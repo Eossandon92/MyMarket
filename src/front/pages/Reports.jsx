@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
     ArrowLeft, BarChart2, TrendingUp, ShoppingCart,
-    CalendarDays, RefreshCcw, Package
+    CalendarDays, RefreshCcw, Package, Download, FileText, FileSpreadsheet
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -69,6 +71,83 @@ export const Reports = () => {
 
     const maxBar = Math.max(...dailySales.map(d => d.total), 1);
 
+    // ── Detalle de Productos (Flattened Items) ──
+    const detailedSales = (() => {
+        if (!data?.orders?.length) return [];
+        const items = [];
+        data.orders.forEach(o => {
+            if (o.items) {
+                o.items.forEach(item => {
+                    items.push({
+                        order_id: o.id,
+                        date: new Date(o.created_at).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" }),
+                        product_name: item.is_promo 
+                            ? `📦 [PACK] ${item.product?.name || `Producto #${item.product_id}`}` 
+                            : (item.product?.name || `Producto #${item.product_id}`),
+                        quantity: item.quantity,
+                        price: item.price_at_time,
+                        subtotal: item.quantity * item.price_at_time
+                    });
+                });
+            }
+        });
+        return items;
+    })();
+
+    const exportToCSV = () => {
+        if (detailedSales.length === 0) return;
+        const headers = ["Fecha", "N° Venta", "Producto", "Cantidad", "Precio Unitario", "Subtotal"];
+        const rows = detailedSales.map(item => [
+            item.date,
+            item.order_id,
+            `"${item.product_name.replace(/"/g, '""')}"`, // Escape quotes
+            item.quantity,
+            item.price,
+            item.subtotal
+        ]);
+        
+        // Add BOM so Excel opens UTF-8 correctly
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+            + headers.join(",") + "\n"
+            + rows.map(e => e.join(",")).join("\n");
+            
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Reporte_Detalle_${periodLabel.replace(/ /g, '_')}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const exportToPDF = () => {
+        if (detailedSales.length === 0) return;
+        const doc = new jsPDF();
+        doc.text("Detalle de Productos Vendidos", 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Período: ${periodLabel}`, 14, 22);
+        
+        const tableColumn = ["Fecha", "N Venta", "Producto", "Cant.", "Precio U.", "Subtotal"];
+        const tableRows = detailedSales.map(item => [
+            item.date,
+            `#${item.order_id}`,
+            item.product_name,
+            item.quantity,
+            fmt(item.price),
+            fmt(item.subtotal)
+        ]);
+        
+        autoTable(doc, {
+            head: [tableColumn],
+            body: tableRows,
+            startY: 28,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [39, 174, 96] }
+        });
+        
+        doc.save(`Reporte_Detalle_${periodLabel.replace(/ /g, '_')}.pdf`);
+    };
+
     return (
         <div style={{
             position: "fixed", inset: 0,
@@ -99,35 +178,56 @@ export const Reports = () => {
                 <div style={{
                     background: "white", borderRadius: "16px", padding: "1.5rem",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.06)", display: "flex", flexWrap: "wrap",
-                    alignItems: "center", gap: "0.75rem"
+                    alignItems: "center", justifyContent: "space-between", gap: "0.75rem"
                 }}>
-                    {PERIODS.map(p => (
-                        <button key={p.id} onClick={() => setPeriod(p.id)} style={{
-                            padding: "0.55rem 1.25rem", borderRadius: "999px", border: "2px solid",
-                            borderColor: period === p.id ? "#27ae60" : "#e2e8f0",
-                            background: period === p.id ? "#f0fdf4" : "white",
-                            color: period === p.id ? "#166534" : "#475569",
-                            fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
-                            fontFamily: "inherit", transition: "all 0.15s"
-                        }}>{p.label}</button>
-                    ))}
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.75rem" }}>
+                        {PERIODS.map(p => (
+                            <button key={p.id} onClick={() => setPeriod(p.id)} style={{
+                                padding: "0.55rem 1.25rem", borderRadius: "999px", border: "2px solid",
+                                borderColor: period === p.id ? "#27ae60" : "#e2e8f0",
+                                background: period === p.id ? "#f0fdf4" : "white",
+                                color: period === p.id ? "#166534" : "#475569",
+                                fontWeight: 700, fontSize: "0.85rem", cursor: "pointer",
+                                fontFamily: "inherit", transition: "all 0.15s"
+                            }}>{p.label}</button>
+                        ))}
 
-                    {period === "custom" && (
-                        <>
-                            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                                style={inputStyle} />
-                            <span style={{ color: "#94a3b8", fontWeight: 600 }}>→</span>
-                            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                                style={inputStyle} />
-                            <button onClick={fetchReport} style={{
-                                padding: "0.55rem 1.25rem", borderRadius: "999px", border: "none",
-                                background: "#27ae60", color: "white", fontWeight: 700,
-                                fontSize: "0.85rem", cursor: "pointer", fontFamily: "inherit",
-                                display: "flex", alignItems: "center", gap: "0.4rem"
-                            }}>
-                                <RefreshCcw size={14} /> Consultar
+                        {period === "custom" && (
+                            <>
+                                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                                    style={inputStyle} />
+                                <span style={{ color: "#94a3b8", fontWeight: 600 }}>→</span>
+                                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                                    style={inputStyle} />
+                                <button onClick={fetchReport} style={{
+                                    padding: "0.55rem 1.25rem", borderRadius: "999px", border: "none",
+                                    background: "#27ae60", color: "white", fontWeight: 700,
+                                    fontSize: "0.85rem", cursor: "pointer", fontFamily: "inherit",
+                                    display: "flex", alignItems: "center", gap: "0.4rem"
+                                }}>
+                                    <RefreshCcw size={14} /> Consultar
+                                </button>
+                            </>
+                        )}
+                    </div>
+                    
+                    {data && detailedSales.length > 0 && (
+                        <div style={{ display: "flex", gap: "0.75rem" }}>
+                            <button onClick={exportToPDF} style={{
+                                padding: "0.55rem 1rem", borderRadius: "8px", border: "1px solid #e2e8f0",
+                                background: "white", color: "#1e293b", fontWeight: 600, fontSize: "0.85rem",
+                                cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", transition: "all 0.15s"
+                            }} title="Descargar en PDF">
+                                <FileText size={16} color="#ef4444" /> PDF
                             </button>
-                        </>
+                            <button onClick={exportToCSV} style={{
+                                padding: "0.55rem 1rem", borderRadius: "8px", border: "none",
+                                background: "#10b981", color: "white", fontWeight: 600, fontSize: "0.85rem",
+                                cursor: "pointer", display: "flex", alignItems: "center", gap: "0.4rem", transition: "all 0.15s"
+                            }} title="Descargar detalle en Excel">
+                                <FileSpreadsheet size={16} /> Excel
+                            </button>
+                        </div>
                     )}
                 </div>
 
@@ -269,6 +369,48 @@ export const Reports = () => {
                                 </div>
                             </div>
                         </div>
+
+                        {/* ── Detalle de Productos Vendidos (Tabla) ── */}
+                        {detailedSales.length > 0 && (
+                            <div style={{
+                                background: "white", borderRadius: "16px", padding: "1.5rem",
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.06)", overflowX: "auto"
+                            }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                                    <h2 style={{ margin: 0, fontSize: "1rem", fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                        <FileText size={18} color="#10b981" /> Detalle de Productos Vendidos
+                                    </h2>
+                                    <span style={{ fontSize: "0.85rem", color: "#64748b", fontWeight: 600 }}>
+                                        {detailedSales.length} registros
+                                    </span>
+                                </div>
+                                
+                                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                                    <thead>
+                                        <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
+                                            <th style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#64748b", fontWeight: 700 }}>Fecha y Hora</th>
+                                            <th style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#64748b", fontWeight: 700 }}>N° Venta</th>
+                                            <th style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#64748b", fontWeight: 700 }}>Producto</th>
+                                            <th style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#64748b", fontWeight: 700 }}>Cant.</th>
+                                            <th style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#64748b", fontWeight: 700 }}>Precio U.</th>
+                                            <th style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#64748b", fontWeight: 700 }}>Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {detailedSales.map((item, index) => (
+                                            <tr key={index} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                                                <td style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#1e293b" }}>{item.date}</td>
+                                                <td style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#3b82f6", fontWeight: 600 }}>#{item.order_id}</td>
+                                                <td style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#1e293b", fontWeight: 500 }}>{item.product_name}</td>
+                                                <td style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#475569" }}>{item.quantity}</td>
+                                                <td style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#475569" }}>{fmt(item.price)}</td>
+                                                <td style={{ padding: "0.75rem 1rem", fontSize: "0.85rem", color: "#27ae60", fontWeight: 700 }}>{fmt(item.subtotal)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </>
                 )}
             </main>

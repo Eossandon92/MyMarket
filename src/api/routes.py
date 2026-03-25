@@ -547,19 +547,33 @@ def create_order():
                     return jsonify({"msg": f"No hay stock suficiente de {p_item.product.name} para armar el pack"}), 400
             
             # Deduct stock and add OrderItems
-            promo_price_distributed = False
-            for p_item in promo.items:
+            total_normal_price = sum((p.product.price * p.quantity) for p in promo.items if p.product)
+            remaining_promo_price = float(promo.price)
+
+            for index, p_item in enumerate(promo.items):
                 p_item.product.stock -= (p_item.quantity * quantity)
                 
-                # Assign the price to the first item of the pack, others 0 for receipt purposes
-                item_price = promo.price if not promo_price_distributed else 0
-                promo_price_distributed = True
+                # Proportional price distribution
+                if index == len(promo.items) - 1:
+                    # Last item absorbs any rounding difference
+                    allocated_to_this_item = remaining_promo_price
+                else:
+                    if total_normal_price > 0:
+                        ratio = (p_item.product.price * p_item.quantity) / total_normal_price
+                        allocated_to_this_item = round(promo.price * ratio, 2)
+                    else:
+                        allocated_to_this_item = round(promo.price / len(promo.items), 2)
+                    
+                    remaining_promo_price -= allocated_to_this_item
+                
+                item_price_per_unit = allocated_to_this_item / p_item.quantity if p_item.quantity > 0 else 0
                 
                 order_item = OrderItem(
                     order_id=new_order.id,
                     product_id=p_item.product_id,
                     quantity=p_item.quantity * quantity,
-                    price_at_time=item_price
+                    price_at_time=item_price_per_unit,
+                    is_promo=True
                 )
                 db.session.add(order_item)
             

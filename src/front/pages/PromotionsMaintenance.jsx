@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Search, Save, Package, Printer, Copy } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, Trash2, Search, Save, Package, Printer, Copy, ArrowLeft } from "lucide-react";
 import Barcode from "react-barcode";
 import { useAuth } from "../context/AuthContext";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
@@ -198,7 +199,23 @@ export const PromotionsMaintenance = () => {
     };
 
     return (
-        <div style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "2rem" }}>
+        <div style={{ position: "fixed", inset: 0, overflowY: "auto", background: "#f1f5f9", fontFamily: "Inter, sans-serif", zIndex: 100 }}>
+            {/* Header */}
+            <header style={{
+                background: "white", borderBottom: "1px solid #e2e8f0",
+                padding: "1rem 2rem", display: "flex", alignItems: "center", gap: "1rem",
+                position: "sticky", top: 0, zIndex: 10
+            }}>
+                <Link to="/" style={{ color: "#64748b", display: "flex", alignItems: "center", textDecoration: "none" }}>
+                    <ArrowLeft size={20} />
+                </Link>
+                <Package size={22} color="#8b5cf6" />
+                <h1 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700, color: "#0f172a" }}>
+                    Gestión de Promociones
+                </h1>
+            </header>
+
+            <main style={{ padding: "2rem", maxWidth: "1200px", margin: "0 auto", display: "flex", gap: "2rem" }}>
 
             {/* Left Side: Create Promo Form */}
             <div style={{ flex: "1", background: "white", padding: "2rem", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)" }}>
@@ -345,6 +362,7 @@ export const PromotionsMaintenance = () => {
                     </div>
                 )}
             </div>
+            </main>
         </div>
     );
 };

@@ -163,6 +163,7 @@ class OrderItem(db.Model):
     product_id: Mapped[int] = mapped_column(db.ForeignKey('product.id'), nullable=False)
     quantity: Mapped[int] = mapped_column(nullable=False, default=1)
     price_at_time: Mapped[float] = mapped_column(nullable=False)
+    is_promo: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False, server_default=db.text('false'))
 
     product = db.relationship("Product", lazy=True)
 
@@ -173,6 +174,7 @@ class OrderItem(db.Model):
             "product_id": self.product_id,
             "quantity": self.quantity,
             "price_at_time": self.price_at_time,
+            "is_promo": self.is_promo,
             "product": self.product.serialize() if self.product else None
         }
 
