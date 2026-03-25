@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Sidebar } from "../components/Sidebar";
 import { CheckoutModal } from "../components/CheckoutModal";
+import { ReceiptModal } from "../components/ReceiptModal";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Scan } from "lucide-react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { useAuth } from "../context/AuthContext";
@@ -13,6 +14,7 @@ export const Home = () => {
 	const [cart, setCart] = useState([]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [receiptData, setReceiptData] = useState(null);
 	const [scanToast, setScanToast] = useState(null); // { msg, type: 'success'|'error' }
 
 	useEffect(() => {
@@ -75,9 +77,23 @@ export const Home = () => {
 	});
 
 	const handleAddToCart = (product) => {
+		if (!product.price || Number(product.price) <= 0) {
+			showToast(`❌ El producto "${product.name}" no tiene precio.`, "error");
+			return;
+		}
+
+		const existing = cart.find((item) => item.id === product.id);
+		const currentQty = existing ? existing.quantity : 0;
+
+		// Promos might not have a stock field directly or it's handled differently, check if stock exists
+		if (product.stock !== undefined && product.stock !== null && currentQty >= product.stock) {
+			showToast(`❌ Sin stock suficiente para "${product.name}".`, "error");
+			return;
+		}
+
 		setCart((prev) => {
-			const existing = prev.find((item) => item.id === product.id);
-			if (existing) {
+			const existingPrev = prev.find((item) => item.id === product.id);
+			if (existingPrev) {
 				return prev.map((item) =>
 					item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
 				);
@@ -91,6 +107,13 @@ export const Home = () => {
 			setCart((prev) => prev.filter((item) => item.id !== id));
 			return;
 		}
+
+		const productInView = products.find(p => p.id === id);
+		if (productInView && productInView.stock !== undefined && productInView.stock !== null && newQty > productInView.stock) {
+			showToast(`❌ Límite de stock alcanzado para "${productInView.name}".`, "error");
+			return;
+		}
+
 		setCart((prev) =>
 			prev.map((item) => (item.id === id ? { ...item, quantity: newQty } : item))
 		);
@@ -104,7 +127,7 @@ export const Home = () => {
 		if (cart.length > 0) setIsModalOpen(true);
 	};
 
-	const handleConfirmCheckout = async (method) => {
+	const handleConfirmCheckout = async (method, cashReceived = 0) => {
 		try {
 			if (!businessId || !token || !user) return;
 			const backendUrl = import.meta.env.VITE_BACKEND_URL;
@@ -128,11 +151,17 @@ export const Home = () => {
 				body: JSON.stringify(orderData),
 			});
 			if (res.ok) {
-				alert("¡Pago exitoso! Orden registrada.");
-				setCart([]);
+				const createdOrder = await res.json();
+				setReceiptData({
+					order: createdOrder,
+					cart: [...cart],
+					paymentMethod: method,
+					cashReceived: cashReceived,
+				});
 				setIsModalOpen(false);
 			} else {
-				alert("Error al procesar la orden.");
+				const errData = await res.json().catch(() => ({}));
+				alert(errData.msg || "Error al procesar la orden.");
 			}
 		} catch (error) {
 			console.error("Error checkout:", error);
@@ -201,7 +230,7 @@ export const Home = () => {
 				</div>
 
 				{/* Category Pills */}
-				<div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", paddingBottom: "0.25rem" }}>
+				<div style={{ display: "flex", gap: "0.5rem", overflowX: "auto", paddingBottom: "0.5rem", marginBottom: "0.5rem" }}>
 					{categories.map((cat, idx) => (
 						<button
 							key={idx}
@@ -431,6 +460,21 @@ export const Home = () => {
 					total={subtotal}
 					onClose={() => setIsModalOpen(false)}
 					onConfirm={handleConfirmCheckout}
+				/>
+			)}
+
+			{receiptData && (
+				<ReceiptModal
+					order={receiptData.order}
+					cart={receiptData.cart}
+					paymentMethod={receiptData.paymentMethod}
+					cashReceived={receiptData.cashReceived}
+					businessName={businessName}
+					cashierName={user?.name}
+					onClose={() => {
+						setReceiptData(null);
+						setCart([]);
+					}}
 				/>
 			)}
 		</div>

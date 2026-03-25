@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Building2, Plus, Mail, Lock, ShieldAlert, LogOut, CheckCircle, Search, Store } from "lucide-react";
+import { Building2, Plus, Mail, Lock, ShieldAlert, LogOut, CheckCircle, Search, Store, User, Edit2, Phone, MapPin, FileText, Power } from "lucide-react";
 
 export const SuperAdminDashboard = () => {
     const { token, logout, user, isSuperAdmin } = useAuth();
@@ -13,10 +13,16 @@ export const SuperAdminDashboard = () => {
 
     // Modal state for creating a new business
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [newBusiness, setNewBusiness] = useState({ name: "", slug: "", adminName: "", adminEmail: "", adminPassword: "" });
+    const [newBusiness, setNewBusiness] = useState({ name: "", slug: "", adminName: "", adminEmail: "", adminPassword: "", subscriptionPlan: "basico" });
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState("");
     const [createSuccess, setCreateSuccess] = useState("");
+
+    // Edit business modal state
+    const [editModal, setEditModal] = useState(null);
+    const [editData, setEditData] = useState({});
+    const [editSaving, setEditSaving] = useState(false);
+    const [editSuccess, setEditSuccess] = useState("");
 
     useEffect(() => {
         if (!isSuperAdmin) {
@@ -64,7 +70,8 @@ export const SuperAdminDashboard = () => {
                     slug: newBusiness.slug,
                     admin_name: newBusiness.adminName,
                     admin_email: newBusiness.adminEmail,
-                    admin_password: newBusiness.adminPassword
+                    admin_password: newBusiness.adminPassword,
+                    subscription_plan: newBusiness.subscriptionPlan
                 })
             });
 
@@ -74,7 +81,7 @@ export const SuperAdminDashboard = () => {
                 setBusinesses([...businesses, data.business]);
                 setTimeout(() => {
                     setIsModalOpen(false);
-                    setNewBusiness({ name: "", slug: "", adminEmail: "", adminPassword: "" });
+                    setNewBusiness({ name: "", slug: "", adminEmail: "", adminPassword: "", subscriptionPlan: "basico" });
                     setCreateSuccess("");
                 }, 2500);
             } else {
@@ -92,6 +99,47 @@ export const SuperAdminDashboard = () => {
         const name = e.target.value;
         const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
         setNewBusiness({ ...newBusiness, name, slug });
+    };
+
+    const openEditModal = (biz) => {
+        setEditModal(biz);
+        setEditData({
+            name: biz.name || "",
+            rut: biz.rut || "",
+            giro_comercial: biz.giro_comercial || "",
+            address: biz.address || "",
+            phone: biz.phone || "",
+            contact_email: biz.contact_email || "",
+            subscription_plan: biz.subscription_plan || "basico",
+            is_active: biz.is_active !== false
+        });
+        setEditSuccess("");
+    };
+
+    const handleUpdateBusiness = async () => {
+        if (!editModal) return;
+        setEditSaving(true);
+        try {
+            const backendUrl = import.meta.env.VITE_BACKEND_URL;
+            const res = await fetch(`${backendUrl}/api/business/${editModal.id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(editData)
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setBusinesses(businesses.map(b => b.id === updated.id ? updated : b));
+                setEditSuccess("¡Negocio actualizado!");
+                setTimeout(() => { setEditModal(null); setEditSuccess(""); }, 1500);
+            }
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setEditSaving(false);
+        }
     };
 
     return (
@@ -150,20 +198,44 @@ export const SuperAdminDashboard = () => {
                                 background: "white", padding: "1.5rem", borderRadius: "16px", boxShadow: "0 4px 6px rgba(0,0,0,0.02)",
                                 border: "1px solid #e2e8f0", display: "flex", flexDirection: "column"
                             }}>
-                                <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", marginBottom: "1rem" }}>
-                                    <div style={{ background: "var(--color-primary-light)", padding: "1rem", borderRadius: "12px", color: "var(--color-primary)" }}>
+                                <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", marginBottom: "0.75rem" }}>
+                                    <div style={{ background: b.is_active !== false ? "var(--color-primary-light)" : "#fef2f2", padding: "1rem", borderRadius: "12px", color: b.is_active !== false ? "var(--color-primary)" : "#ef4444" }}>
                                         <Store size={28} />
                                     </div>
                                     <div>
-                                        <h3 style={{ margin: "0 0 0.25rem", fontSize: "1.2rem", fontWeight: 700, color: "#0f172a" }}>{b.name}</h3>
-                                        <span style={{ fontSize: "0.85rem", background: "#f1f5f9", padding: "0.2rem 0.6rem", borderRadius: "100px", color: "#64748b", fontWeight: 600 }}>ID: {b.id}</span>
+                                        <h3 style={{ margin: "0 0 0.25rem", fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>{b.name}</h3>
+                                        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                                            <span style={{ fontSize: "0.75rem", background: "#f1f5f9", padding: "0.15rem 0.5rem", borderRadius: "100px", color: "#64748b", fontWeight: 600 }}>ID: {b.id}</span>
+                                            <span style={{ fontSize: "0.75rem", background: getPlanColor(b.subscription_plan).bg, padding: "0.15rem 0.5rem", borderRadius: "100px", color: getPlanColor(b.subscription_plan).text, fontWeight: 700, textTransform: "capitalize" }}>{b.subscription_plan || 'basico'}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <div style={{ marginTop: "auto", paddingTop: "1rem", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                    <span style={{ fontSize: "0.85rem", color: "#94a3b8", fontWeight: 500 }}>Slug: {b.slug}</span>
-                                    <span style={{ fontSize: "0.85rem", color: "#22c55e", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                                        <div style={{ width: "8px", height: "8px", background: "#22c55e", borderRadius: "50%" }}></div> Activo
+                                {/* Details */}
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.75rem", fontSize: "0.8rem", color: "#64748b" }}>
+                                    {b.rut && <span>RUT: <strong style={{ color: "#334155" }}>{b.rut}</strong></span>}
+                                    {b.address && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><MapPin size={12} /> {b.address}</span>}
+                                    {b.phone && <span style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}><Phone size={12} /> {b.phone}</span>}
+                                </div>
+                                <div style={{ marginTop: "auto", paddingTop: "0.75rem", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                    <span style={{ fontSize: "0.8rem", color: b.is_active !== false ? "#22c55e" : "#ef4444", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                                        <div style={{ width: "8px", height: "8px", background: b.is_active !== false ? "#22c55e" : "#ef4444", borderRadius: "50%" }}></div>
+                                        {b.is_active !== false ? "Activo" : "Suspendido"}
                                     </span>
+                                    <button
+                                        onClick={() => openEditModal(b)}
+                                        style={{
+                                            padding: "0.35rem 0.75rem", borderRadius: "999px",
+                                            border: "2px solid #e2e8f0", background: "white",
+                                            color: "#475569", fontWeight: 700, fontSize: "0.75rem",
+                                            cursor: "pointer", fontFamily: "inherit",
+                                            display: "flex", alignItems: "center", gap: "0.3rem",
+                                            transition: "all 0.15s"
+                                        }}
+                                        onMouseOver={(e) => { e.currentTarget.style.borderColor = "#27ae60"; e.currentTarget.style.color = "#27ae60"; }}
+                                        onMouseOut={(e) => { e.currentTarget.style.borderColor = "#e2e8f0"; e.currentTarget.style.color = "#475569"; }}
+                                    >
+                                        <Edit2 size={12} /> Editar
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -212,6 +284,20 @@ export const SuperAdminDashboard = () => {
                                     required type="text" readOnly value={newBusiness.slug}
                                     style={{ ...inputStyle, paddingLeft: "1rem", background: "#f1f5f9", color: "#64748b", cursor: "not-allowed" }}
                                 />
+                            </div>
+
+                            <div>
+                                <label style={{ display: "block", fontSize: "0.9rem", fontWeight: 600, color: "#334155", marginBottom: "0.5rem" }}>Plan de Suscripción</label>
+                                <select
+                                    required
+                                    value={newBusiness.subscriptionPlan}
+                                    onChange={(e) => setNewBusiness({ ...newBusiness, subscriptionPlan: e.target.value })}
+                                    style={{ ...inputStyle, paddingLeft: "1rem" }}
+                                >
+                                    <option value="basico">Plan Básico (Máx 2 usuarios)</option>
+                                    <option value="pro">Plan Pro (Carga IA y Packs)</option>
+                                    <option value="empresa">Plan Empresa (Múltiples Sucursales)</option>
+                                </select>
                             </div>
 
                             <hr style={{ border: "none", borderTop: "1px dashed #cbd5e1", margin: "0.5rem 0" }} />
@@ -267,6 +353,127 @@ export const SuperAdminDashboard = () => {
                     </div>
                 </div>
             )}
+
+            {/* Edit Business Modal */}
+            {editModal && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100 }}>
+                    <div style={{ background: "white", width: "100%", maxWidth: "520px", borderRadius: "16px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.2)", maxHeight: "90vh", display: "flex", flexDirection: "column" }}>
+                        {/* Header */}
+                        <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                            <h3 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                <Edit2 size={18} color="#27ae60" />
+                                Editar Negocio
+                            </h3>
+                            <button onClick={() => setEditModal(null)} style={{ background: "#f1f5f9", border: "none", width: "30px", height: "30px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b", fontSize: "1rem", fontWeight: 700 }}>✕</button>
+                        </div>
+
+                        {/* Body */}
+                        <div style={{ padding: "1.5rem", overflowY: "auto", flex: 1 }}>
+                            {editSuccess && (
+                                <div style={{ background: "#f0fdf4", border: "1px solid #86efac", borderRadius: "12px", padding: "0.75rem 1rem", color: "#166534", fontWeight: 600, fontSize: "0.85rem", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                                    <CheckCircle size={16} /> {editSuccess}
+                                </div>
+                            )}
+
+                            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                                {/* Name */}
+                                <EditField label="Nombre del Negocio" value={editData.name} onChange={(v) => setEditData({ ...editData, name: v })} placeholder="Mi Minimarket" />
+
+                                {/* RUT + Giro row */}
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                                    <EditField label="RUT" value={editData.rut} onChange={(v) => setEditData({ ...editData, rut: v })} placeholder="76.123.456-7" />
+                                    <EditField label="Giro Comercial" value={editData.giro_comercial} onChange={(v) => setEditData({ ...editData, giro_comercial: v })} placeholder="Venta de abarrotes" />
+                                </div>
+
+                                {/* Address */}
+                                <EditField label="Dirección" value={editData.address} onChange={(v) => setEditData({ ...editData, address: v })} placeholder="Av. Providencia 1234, Santiago" />
+
+                                {/* Phone + Email row */}
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                                    <EditField label="Teléfono" value={editData.phone} onChange={(v) => setEditData({ ...editData, phone: v })} placeholder="+56 9 1234 5678" />
+                                    <EditField label="Email de Contacto" value={editData.contact_email} onChange={(v) => setEditData({ ...editData, contact_email: v })} placeholder="contacto@tienda.cl" />
+                                </div>
+
+                                {/* Subscription Plan */}
+                                <div>
+                                    <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.4rem" }}>Plan de Suscripción</label>
+                                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                                        {[
+                                            { value: "basico", label: "Básico", color: "#64748b" },
+                                            { value: "pro", label: "Pro", color: "#3b82f6" },
+                                            { value: "empresa", label: "Empresa", color: "#8b5cf6" }
+                                        ].map(plan => (
+                                            <button
+                                                key={plan.value}
+                                                onClick={() => setEditData({ ...editData, subscription_plan: plan.value })}
+                                                style={{
+                                                    flex: 1, padding: "0.5rem", borderRadius: "10px",
+                                                    border: editData.subscription_plan === plan.value ? `2px solid ${plan.color}` : "2px solid #e2e8f0",
+                                                    background: editData.subscription_plan === plan.value ? `${plan.color}10` : "white",
+                                                    cursor: "pointer", fontFamily: "inherit", fontWeight: 700,
+                                                    fontSize: "0.85rem", color: editData.subscription_plan === plan.value ? plan.color : "#94a3b8",
+                                                    transition: "all 0.15s"
+                                                }}
+                                            >
+                                                {plan.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Active Toggle */}
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.75rem 1rem", borderRadius: "12px", background: editData.is_active ? "#f0fdf4" : "#fef2f2", border: `1px solid ${editData.is_active ? '#86efac' : '#fca5a5'}` }}>
+                                    <div>
+                                        <span style={{ fontSize: "0.88rem", fontWeight: 700, color: editData.is_active ? "#166534" : "#dc2626" }}>
+                                            {editData.is_active ? "Negocio Activo" : "Negocio Suspendido"}
+                                        </span>
+                                        <span style={{ display: "block", fontSize: "0.75rem", color: "#64748b", marginTop: "0.1rem" }}>
+                                            {editData.is_active ? "El negocio puede operar normalmente" : "El negocio no puede acceder al sistema"}
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => setEditData({ ...editData, is_active: !editData.is_active })}
+                                        style={{
+                                            width: "44px", height: "24px", borderRadius: "12px", border: "none",
+                                            background: editData.is_active ? "#22c55e" : "#d1d5db",
+                                            cursor: "pointer", position: "relative", transition: "background 0.2s", flexShrink: 0
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: "18px", height: "18px", borderRadius: "50%", background: "white",
+                                            position: "absolute", top: "3px",
+                                            left: editData.is_active ? "23px" : "3px",
+                                            transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.15)"
+                                        }} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #e2e8f0", display: "flex", gap: "0.75rem", flexShrink: 0 }}>
+                            <button
+                                onClick={() => setEditModal(null)}
+                                style={{ flex: 1, padding: "0.55rem 1rem", borderRadius: "999px", border: "2px solid #e2e8f0", background: "white", color: "#475569", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer", fontFamily: "inherit" }}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleUpdateBusiness}
+                                disabled={editSaving || editSuccess}
+                                style={{
+                                    flex: 1, padding: "0.55rem 1rem", borderRadius: "999px", border: "none",
+                                    background: editSaving || editSuccess ? "#94a3b8" : "#27ae60", color: "white",
+                                    fontWeight: 700, fontSize: "0.85rem", cursor: editSaving ? "wait" : "pointer",
+                                    fontFamily: "inherit", transition: "background 0.15s"
+                                }}
+                            >
+                                {editSaving ? "Guardando..." : editSuccess ? "✓ Guardado" : "Guardar Cambios"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -275,4 +482,27 @@ const inputStyle = {
     width: "100%", padding: "0.875rem 1rem 0.875rem 2.8rem", borderRadius: "10px",
     border: "1px solid #cbd5e1", fontSize: "0.95rem", color: "#0f172a", boxSizing: "border-box",
     background: "white", outline: "none", transition: "all 0.2s"
+};
+
+// Reusable field for the edit modal
+const EditField = ({ label, value, onChange, placeholder }) => (
+    <div>
+        <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.4rem" }}>{label}</label>
+        <input
+            type="text" value={value || ""}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            style={{ width: "100%", padding: "0.5rem 0.75rem", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "0.85rem", fontFamily: "inherit", color: "#0f172a", outline: "none", transition: "border-color 0.15s", boxSizing: "border-box" }}
+            onFocus={(e) => e.target.style.borderColor = "#27ae60"}
+            onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+        />
+    </div>
+);
+
+const getPlanColor = (plan) => {
+    switch (plan) {
+        case 'pro': return { bg: "#eff6ff", text: "#3b82f6" };
+        case 'empresa': return { bg: "#f5f3ff", text: "#8b5cf6" };
+        default: return { bg: "#f1f5f9", text: "#64748b" };
+    }
 };

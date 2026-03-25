@@ -10,6 +10,16 @@ class Business(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     slug: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)  # short identifier e.g. "minimarket-pedro"
+    subscription_plan: Mapped[str] = mapped_column(String(50), nullable=False, server_default="basico")
+
+    # Business details
+    rut = db.Column(String(20), nullable=True)              # e.g. "76.123.456-7"
+    giro_comercial = db.Column(String(200), nullable=True)  # e.g. "Venta de abarrotes"
+    address = db.Column(String(300), nullable=True)         # physical address
+    phone = db.Column(String(30), nullable=True)            # contact phone
+    contact_email = db.Column(String(120), nullable=True)   # business contact email
+    is_active = db.Column(db.Boolean, nullable=False, server_default="true")
+
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 
     users = db.relationship("User", backref="business", lazy=True)
@@ -24,6 +34,13 @@ class Business(db.Model):
             "id": self.id,
             "name": self.name,
             "slug": self.slug,
+            "subscription_plan": self.subscription_plan,
+            "rut": self.rut,
+            "giro_comercial": self.giro_comercial,
+            "address": self.address,
+            "phone": self.phone,
+            "contact_email": self.contact_email,
+            "is_active": self.is_active if self.is_active is not None else True,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -92,6 +109,7 @@ class Product(db.Model):
     barcode: Mapped[str] = mapped_column(String(100), nullable=True)
     description: Mapped[str] = mapped_column(String(300), nullable=True)
     min_stock: Mapped[int] = mapped_column(nullable=False, default=5)
+    cost_price = db.Column(db.Float, nullable=True, default=None)  # precio de costo
 
     # Barcode is unique within a business (same barcode can exist in different businesses)
     __table_args__ = (
@@ -110,6 +128,7 @@ class Product(db.Model):
             "barcode": self.barcode,
             "description": self.description,
             "min_stock": self.min_stock,
+            "cost_price": self.cost_price,
             "low_stock": self.stock <= self.min_stock
         }
 

@@ -26,7 +26,8 @@ export const ProductMaintenance = () => {
     image_url: "",
     barcode: "",
     description: "",
-    min_stock: 5
+    min_stock: 5,
+    cost_price: ""
   };
   const [formData, setFormData] = useState(initialFormState);
   const [scannerFeedback, setScannerFeedback] = useState("");
@@ -260,7 +261,8 @@ export const ProductMaintenance = () => {
       image_url: product.image_url || "",
       barcode: product.barcode || "",
       description: product.description || "",
-      min_stock: product.min_stock ?? 5
+      min_stock: product.min_stock ?? 5,
+      cost_price: product.cost_price ?? ""
     });
     setIsModalOpen(true);
   };
@@ -272,9 +274,12 @@ export const ProductMaintenance = () => {
   };
 
   const handleGenerateImage = async (nameOverride, fallbackUrl = "") => {
-    const nameToUse = nameOverride || formData.name;
+    // Ensure we use a clean string, avoiding event objects if accidentally passed
+    const providedName = typeof nameOverride === "string" ? nameOverride : "";
+    const nameToUse = (providedName || formData.name || "").trim();
+
     if (!nameToUse) {
-      alert("Por favor ingresa un nombre de producto primero.");
+      alert("Por favor ingresa un nombre de producto válido primero para buscar la imagen.");
       return;
     }
 
@@ -286,7 +291,7 @@ export const ProductMaintenance = () => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ product_name: formData.name })
+        body: JSON.stringify({ product_name: nameToUse })
       });
 
       if (response.ok) {
@@ -318,7 +323,8 @@ export const ProductMaintenance = () => {
       ...formData,
       business_id: businessId,
       price: parseFloat(formData.price),
-      stock: parseInt(formData.stock, 10)
+      stock: parseInt(formData.stock, 10),
+      cost_price: formData.cost_price !== "" ? parseFloat(formData.cost_price) : null
     };
 
     try {
@@ -466,13 +472,9 @@ export const ProductMaintenance = () => {
         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
           <thead>
             <tr style={{ backgroundColor: "#F8FAFC", borderBottom: "2px solid var(--border-color)" }}>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>ID</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Imagen</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Nombre</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Categoría</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Precio</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Stock</th>
-              <th style={{ padding: "1.25rem 1.5rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "right" }}>Acciones</th>
+              {["ID","Imagen","Nombre","Categoría","P. Venta","P. Costo","Margen","Ganancia","Stock","Estado",""].map((h, i) => (
+                <th key={i} style={{ padding: "1rem 1rem", color: "var(--color-text-muted)", fontWeight: "600", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap", ...(i === 10 ? { textAlign: "right" } : {}) }}>{h || "Acciones"}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -501,9 +503,34 @@ export const ProductMaintenance = () => {
                       {product.category}
                     </span>
                   </td>
-                  <td style={{ padding: "1rem 1.5rem", fontWeight: "700", fontSize: "1.1rem", color: "var(--color-text-main)" }}>${product.price}</td>
-                  <td style={{ padding: "1rem 1.5rem", fontWeight: "500", color: product.stock > 10 ? "var(--color-text-main)" : "var(--color-warning)" }}>
-                    {product.stock} {product.stock <= 10 && " (Bajo)"}
+                  <td style={{ padding: "0.75rem 1rem", fontWeight: "700", color: "var(--color-text-main)" }}>${product.price.toLocaleString("es-CL")}</td>
+                  <td style={{ padding: "0.75rem 1rem", fontWeight: "500", color: product.cost_price != null ? "var(--color-text-main)" : "#cbd5e1" }}>
+                    {product.cost_price != null ? `$${product.cost_price.toLocaleString("es-CL")}` : "—"}
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem" }}>
+                    {product.cost_price != null ? (
+                      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: ((product.price - product.cost_price) / product.price * 100) >= 30 ? "#16a34a" : ((product.price - product.cost_price) / product.price * 100) >= 10 ? "#f59e0b" : "#ef4444" }}>
+                        {Math.round((product.price - product.cost_price) / product.price * 100)}%
+                      </span>
+                    ) : <span style={{ color: "#cbd5e1" }}>—</span>}
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem" }}>
+                    {product.cost_price != null ? (
+                      <span style={{ fontWeight: 700, fontSize: "0.9rem", color: (product.price - product.cost_price) >= 0 ? "#16a34a" : "#ef4444" }}>
+                        {(product.price - product.cost_price) >= 0 ? "+" : ""}${(product.price - product.cost_price).toLocaleString("es-CL")}
+                      </span>
+                    ) : <span style={{ color: "#cbd5e1" }}>—</span>}
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem", fontWeight: "500" }}>
+                    {product.stock}
+                  </td>
+                  <td style={{ padding: "0.75rem 1rem" }}>
+                    {(() => {
+                      if (product.stock <= 0) return <span style={{ background: "#fef2f2", color: "#dc2626", padding: "0.2rem 0.6rem", borderRadius: "100px", fontSize: "0.78rem", fontWeight: 700 }}>Sin Stock</span>;
+                      if (product.stock <= (product.min_stock || 5)) return <span style={{ background: "#fffbeb", color: "#d97706", padding: "0.2rem 0.6rem", borderRadius: "100px", fontSize: "0.78rem", fontWeight: 700 }}>Bajo</span>;
+                      if (product.cost_price == null) return <span style={{ background: "#f1f5f9", color: "#94a3b8", padding: "0.2rem 0.6rem", borderRadius: "100px", fontSize: "0.78rem", fontWeight: 700 }}>Sin Costo</span>;
+                      return <span style={{ background: "#f0fdf4", color: "#16a34a", padding: "0.2rem 0.6rem", borderRadius: "100px", fontSize: "0.78rem", fontWeight: 700 }}>OK</span>;
+                    })()}
                   </td>
                   <td style={{ padding: "1rem 1.5rem", textAlign: "right" }}>
                     <button
@@ -529,7 +556,7 @@ export const ProductMaintenance = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="7" style={{ padding: "3rem", textAlign: "center", color: "var(--color-text-muted)", fontSize: "1.1rem" }}>
+                <td colSpan="11" style={{ padding: "3rem", textAlign: "center", color: "var(--color-text-muted)", fontSize: "1.1rem" }}>
                   No hay productos registrados en el catálogo.
                 </td>
               </tr>
@@ -571,168 +598,199 @@ export const ProductMaintenance = () => {
       {isModalOpen && (
         <>
           <div className="modal-backdrop fade show"></div>
-          <div className="modal d-block" tabIndex="-1">
-            <div className="modal-dialog">
-              <div className="modal-content">
+          <div style={{ position: "fixed", inset: 0, zIndex: 1055, display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+            <div className="modal-content" style={{ width: "900px", maxWidth: "90vw", maxHeight: "90vh", borderRadius: "16px", boxShadow: "0 25px 50px rgba(0,0,0,0.25)", display: "flex", flexDirection: "column" }}>
                 <div className="modal-header">
                   <h5 className="modal-title">
                     {editingId ? "Editar Producto" : "Nuevo Producto"}
                   </h5>
                   <button type="button" className="btn-close" onClick={closeModal}></button>
                 </div>
-                <form onSubmit={handleSubmit}>
-                  <div className="modal-body" style={{ maxHeight: "75vh", overflowY: "auto", overflowX: "hidden", paddingRight: "10px" }}>
-                    <div className="mb-3">
-                      <label className="form-label">Nombre del Producto</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Categoría</label>
-                      <select
-                        className="form-select"
-                        name="category"
-                        value={formData.category}
-                        onChange={handleInputChange}
-                        required
-                      >
-                        <option value="">Selecciona una categoría</option>
-                        {categories.map((cat) => (
-                          <option key={cat.id} value={cat.name}>
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", overflow: "hidden", flex: 1 }}>
+                  <div className="modal-body" style={{ overflowY: "auto", overflowX: "hidden", paddingRight: "10px" }}>
 
-                    <div className="row" style={{ alignItems: "flex-end" }}>
-                      <div className="col-md-4 mb-3">
-                        <label className="form-label">Precio</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control"
-                          name="price"
-                          value={formData.price}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="col-md-4 mb-3">
-                        <label className="form-label">Stock Actual</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          name="stock"
-                          value={formData.stock}
-                          onChange={handleInputChange}
-                          required
-                        />
-                      </div>
-                      <div className="col-md-4 mb-3">
-                        <label className="form-label">Stock Mínimo</label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          name="min_stock"
-                          value={formData.min_stock}
-                          onChange={handleInputChange}
-                          min="0"
-                          title="Alerta cuando el stock llegue a este valor"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mb-3">
-                      <label className="form-label d-flex align-items-center gap-2">
-                        <Scan size={16} />
-                        Código de Barras
-                        {isLookingUp && (
-                          <span style={{ fontSize: "0.78rem", color: "#0ea5e9", fontWeight: 600 }}>
-                            🔍 Consultando...
-                          </span>
-                        )}
-                        {!isLookingUp && scannerFeedback && (
-                          <span style={{
-                            fontSize: "0.78rem",
-                            fontWeight: 600,
-                            color: scannerFeedback.includes("✅") ? "var(--color-primary)"
-                              : scannerFeedback.includes("⚠️") ? "#f59e0b"
-                                : "var(--color-text-muted)"
-                          }}>
-                            {scannerFeedback}
-                          </span>
-                        )}
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="barcode"
-                        value={formData.barcode}
-                        onChange={handleInputChange}
-                        placeholder="Escanea o escribe el código..."
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            const code = formData.barcode.trim();
-                            if (code) handleBarcodeScan(code);
-                          }
-                        }}
-                      />
-
-                      <small className="form-text text-muted">
-                        Apunta el lector de barras al producto mientras este modal esté abierto.
-                      </small>
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">URL de Imagen (Opcional)</label>
-                      <div className="input-group">
-                        <input
-                          type="url"
-                          className="form-control"
-                          name="image_url"
-                          value={formData.image_url}
-                          onChange={handleInputChange}
-                          placeholder="https://ejemplo.com/imagen.jpg"
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-warning"
-                          onClick={() => handleGenerateImage()}
-                          disabled={isGenerating || !formData.name}
-                        >
-                          {isGenerating ? "Cargando..." : "✨ IA"}
-                        </button>
-                      </div>
-                      <small className="form-text text-muted">
-                        Escribe nombre primero y autocompleta.
-                      </small>
-
-                      {formData.image_url && (
-                        <div style={{ marginTop: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", background: "#f8fafc", padding: "0.75rem", borderRadius: "10px", border: "1px dashed #cbd5e1" }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ margin: "0 0 0.25rem 0", fontSize: "0.85rem", color: "#64748b", fontWeight: 700 }}>Miniatura Cargada</p>
-                            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                              {formData.image_url}
-                            </p>
+                    <div style={{ display: "flex", gap: "2rem" }}>
+                      {/* LEFT COLUMN - Form fields */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="row">
+                          <div className="col-md-8 mb-3">
+                            <label className="form-label">Nombre del Producto</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              name="name"
+                              value={formData.name}
+                              onChange={handleInputChange}
+                              required
+                            />
                           </div>
-                          <img
-                            src={formData.image_url}
-                            alt="Previsualización del Producto"
-                            style={{ flexShrink: 0, width: "60px", height: "60px", objectFit: "contain", borderRadius: "6px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", background: "white", padding: "2px" }}
-                            onError={(e) => { e.target.style.display = "none"; }}
-                          />
+                          <div className="col-md-4 mb-3">
+                            <label className="form-label">Categoría</label>
+                            <select
+                              className="form-select"
+                              name="category"
+                              value={formData.category}
+                              onChange={handleInputChange}
+                              required
+                            >
+                              <option value="">Selecciona</option>
+                              {categories.map((cat) => (
+                                <option key={cat.id} value={cat.name}>
+                                  {cat.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
-                      )}
+
+                        <div className="row">
+                          <div className="col-md-3 mb-3">
+                            <label className="form-label">Precio Venta</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              name="price"
+                              value={formData.price}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                          <div className="col-md-3 mb-3">
+                            <label className="form-label" style={{ display: "flex", alignItems: "center", gap: "4px" }}>P. Costo <span style={{ fontSize: "0.65rem", color: "#94a3b8", fontWeight: 400 }}>(opc.)</span></label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              name="cost_price"
+                              value={formData.cost_price}
+                              onChange={handleInputChange}
+                              placeholder="Ej: 500"
+                              style={{ borderColor: formData.cost_price ? "#27ae60" : undefined }}
+                            />
+                          </div>
+                          <div className="col-md-3 mb-3">
+                            <label className="form-label">Stock</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              name="stock"
+                              value={formData.stock}
+                              onChange={handleInputChange}
+                              required
+                            />
+                          </div>
+                          <div className="col-md-3 mb-3">
+                            <label className="form-label">Stock Mín.</label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              name="min_stock"
+                              value={formData.min_stock}
+                              onChange={handleInputChange}
+                              min="0"
+                              title="Alerta cuando el stock llegue a este valor"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mb-3">
+                          <label className="form-label d-flex align-items-center gap-2">
+                            <Scan size={16} />
+                            Código de Barras
+                            {isLookingUp && (
+                              <span style={{ fontSize: "0.78rem", color: "#0ea5e9", fontWeight: 600 }}>
+                                🔍 Consultando...
+                              </span>
+                            )}
+                            {!isLookingUp && scannerFeedback && (
+                              <span style={{
+                                fontSize: "0.78rem",
+                                fontWeight: 600,
+                                color: scannerFeedback.includes("✅") ? "var(--color-primary)"
+                                  : scannerFeedback.includes("⚠️") ? "#f59e0b"
+                                    : "var(--color-text-muted)"
+                              }}>
+                                {scannerFeedback}
+                              </span>
+                            )}
+                          </label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            name="barcode"
+                            value={formData.barcode}
+                            onChange={handleInputChange}
+                            placeholder="Escanea o escribe el código..."
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const code = formData.barcode.trim();
+                                if (code) handleBarcodeScan(code);
+                              }
+                            }}
+                          />
+                          <small className="form-text text-muted">
+                            Apunta el lector de barras al producto mientras este modal esté abierto.
+                          </small>
+                        </div>
+
+                        <div className="mb-3">
+                          <label className="form-label">URL de Imagen (Opcional)</label>
+                          <div className="input-group">
+                            <input
+                              type="url"
+                              className="form-control"
+                              name="image_url"
+                              value={formData.image_url}
+                              onChange={handleInputChange}
+                              placeholder="https://ejemplo.com/imagen.jpg"
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-warning"
+                              onClick={() => handleGenerateImage()}
+                              disabled={isGenerating || !formData.name || !formData.name.trim()}
+                            >
+                              {isGenerating ? "Cargando..." : "✨ IA"}
+                            </button>
+                          </div>
+                          <small className="form-text text-muted">
+                            Escribe nombre primero y autocompleta.
+                          </small>
+                        </div>
+                      </div>
+
+                      {/* RIGHT COLUMN - Image preview */}
+                      <div style={{ width: "200px", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", paddingTop: "0.5rem" }}>
+                        <div style={{
+                          width: "180px", height: "180px", borderRadius: "16px", border: "2px dashed #cbd5e1",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          background: "#f8fafc", overflow: "hidden"
+                        }}>
+                          {formData.image_url ? (
+                            <img
+                              src={formData.image_url}
+                              alt="Previsualización"
+                              style={{ width: "100%", height: "100%", objectFit: "contain", padding: "8px" }}
+                              onError={(e) => { e.target.style.display = "none"; }}
+                            />
+                          ) : (
+                            <span style={{ color: "#cbd5e1", fontSize: "0.8rem", textAlign: "center", padding: "1rem" }}>
+                              Sin imagen
+                            </span>
+                          )}
+                        </div>
+                        {formData.image_url && (
+                          <p style={{ marginTop: "0.5rem", fontSize: "0.7rem", color: "#64748b", textAlign: "center", wordBreak: "break-all", maxWidth: "180px" }}>
+                            Miniatura cargada ✅
+                          </p>
+                        )}
+                      </div>
                     </div>
+
                   </div>
-                  <div className="modal-footer">
+                  <div className="modal-footer" style={{ gap: "1rem" }}>
                     <button type="button" className="btn btn-secondary" onClick={closeModal}>
                       Cancelar
                     </button>
@@ -742,7 +800,6 @@ export const ProductMaintenance = () => {
                   </div>
                 </form>
               </div>
-            </div>
           </div>
         </>
       )}

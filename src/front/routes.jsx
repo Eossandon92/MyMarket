@@ -15,6 +15,8 @@ import { AddStock } from "./pages/AddStock";
 import { Login } from "./pages/Login";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { SuperAdminDashboard } from "./pages/SuperAdminDashboard";
+import { UsersManagement } from "./pages/UsersManagement";
+import { BalanceDashboard } from "./pages/BalanceDashboard";
 
 export const router = createBrowserRouter(
   createRoutesFromElements(
@@ -38,8 +40,10 @@ export const router = createBrowserRouter(
         <Route path="admin/promotions" element={<PromotionsMaintenance />} />
         <Route path="admin/categories" element={<CategoryMaintenance />} />
         <Route path="admin/reports" element={<Reports />} />
+        <Route path="admin/users" element={<UsersManagement />} />
         <Route path="admin/cash-register" element={<CashRegister />} />
         <Route path="admin/add-stock" element={<AddStock />} />
+        <Route path="admin/balance" element={<BalanceDashboard />} />
       </Route>
     </Route>
   )

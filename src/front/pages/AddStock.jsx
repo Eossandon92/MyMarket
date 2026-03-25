@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
-import { PackageOpen, Search, CheckCircle, AlertCircle, RefreshCw, Hand, ArrowRight, Camera, Save, Trash2, ChevronLeft } from "lucide-react";
+import { PackageOpen, Search, CheckCircle, AlertCircle, RefreshCw, Hand, ArrowRight, Camera, Save, Trash2, ChevronLeft, Download } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export const AddStock = () => {
@@ -27,6 +27,7 @@ export const AddStock = () => {
     const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
     const [aiPreviewItems, setAiPreviewItems] = useState(null);
     const [isProcessingExcel, setIsProcessingExcel] = useState(false);
+    const [excelMeta, setExcelMeta] = useState(null);
     const [excelError, setExcelError] = useState("");
     const [excelSuccess, setExcelSuccess] = useState("");
 
@@ -265,6 +266,7 @@ export const AddStock = () => {
             if (res.ok) {
                 const data = await res.json();
                 setAiPreviewItems(data.items);
+                setExcelMeta({ sheet_info: data.sheet_info, columns_detected: data.columns_detected });
             } else {
                 const err = await res.json();
                 setExcelError(err.msg || "Error al procesar el Excel con IA.");
@@ -374,6 +376,17 @@ export const AddStock = () => {
                     onChange={handleExcelUpload}
                     style={{ display: 'none' }}
                 />
+                <a
+                    href="/Plantilla_Inventario_MyMarket.xlsx"
+                    download="Plantilla_Inventario_MyMarket.xlsx"
+                    style={{
+                        background: "white", color: "var(--color-primary)", border: "2px solid var(--color-primary)", padding: "1rem 1.5rem", borderRadius: "12px",
+                        fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, justifyContent: "center",
+                        textDecoration: "none", boxShadow: "0 4px 6px rgba(0,0,0,0.05)"
+                    }}
+                >
+                    <Download size={20} /> Descargar Plantilla
+                </a>
                 <button
                     onClick={() => {
                         setIsExcelModalOpen(true);
@@ -636,9 +649,15 @@ export const AddStock = () => {
                             </>
                         ) : (
                             <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                <p style={{ color: "#0f172a", fontSize: "0.95rem", marginBottom: "1rem", fontWeight: 600 }}>
-                                    ¡Listo! Gemini detectó <strong style={{ color: "var(--color-primary)" }}>{aiPreviewItems.length}</strong> productos. Revisa que estén correctos antes de guardarlos.
+                                <p style={{ color: "#0f172a", fontSize: "0.95rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                                    ¡Listo! Se detectaron <strong style={{ color: "var(--color-primary)" }}>{aiPreviewItems.length}</strong> productos. Revisa que estén correctos antes de guardarlos.
                                 </p>
+                                {excelMeta && excelMeta.columns_detected && (
+                                    <p style={{ color: "#64748b", fontSize: "0.78rem", marginBottom: "1rem", background: "#f8fafc", padding: "0.5rem 0.75rem", borderRadius: "8px", lineHeight: 1.6 }}>
+                                        <strong>Columnas detectadas:</strong> {Object.entries(excelMeta.columns_detected).map(([k, v]) => `${k}: "${v}"`).join(" · ")}
+                                        {excelMeta.sheet_info && <><br /><strong>Hojas leídas:</strong> {excelMeta.sheet_info.map(s => `${s.name} (${s.rows} filas)`).join(", ")}</>}
+                                    </p>
+                                )}
 
                                 {excelError && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.9rem", fontWeight: 600 }}>{excelError}</div>}
                                 {excelSuccess && <div style={{ background: "#f0fdf4", color: "#16a34a", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.9rem", fontWeight: 700, display: "flex", gap: "0.5rem" }}><CheckCircle size={18} /> {excelSuccess}</div>}
@@ -648,7 +667,8 @@ export const AddStock = () => {
                                         <thead style={{ background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }}>
                                             <tr>
                                                 <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Producto</th>
-                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Categoría (IA)</th>
+                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Cód. Barras</th>
+                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Categoría</th>
                                                 <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>P. Venta</th>
                                                 <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Stock</th>
                                                 <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}></th>
@@ -658,6 +678,7 @@ export const AddStock = () => {
                                             {aiPreviewItems.map((item, idx) => (
                                                 <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
                                                     <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#0f172a" }}>{item.name}</td>
+                                                    <td style={{ padding: "0.75rem 1rem", fontSize: "0.8rem", color: item.barcode ? "#0f172a" : "#cbd5e1", fontFamily: "monospace" }}>{item.barcode || "—"}</td>
                                                     <td style={{ padding: "0.75rem 1rem" }}>
                                                         <span style={{ background: "#e0f2fe", color: "#0284c7", padding: "0.2rem 0.5rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 600 }}>{item.category_name}</span>
                                                     </td>
@@ -672,7 +693,7 @@ export const AddStock = () => {
                                             ))}
                                             {aiPreviewItems.length === 0 && (
                                                 <tr>
-                                                    <td colSpan="5" style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>No hay productos en la lista.</td>
+                                                    <td colSpan="6" style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>No hay productos en la lista.</td>
                                                 </tr>
                                             )}
                                         </tbody>

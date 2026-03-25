@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAuth } from "../context/AuthContext";
+import { Calculator, ArrowLeft, Banknote, CreditCard, Lock, RefreshCw, Smartphone, Activity, BarChart2, BarChart, FileText } from "lucide-react";
 
 export const CashRegister = () => {
     const { businessId, token, user } = useAuth();

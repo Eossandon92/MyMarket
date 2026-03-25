@@ -225,7 +225,7 @@ export const CheckoutModal = ({ total, onClose, onConfirm }) => {
                     >
                         Cancelar
                     </button>
-                    <button onClick={() => onConfirm(paymentMethod)} disabled={!isValid} style={{
+                    <button onClick={() => onConfirm(paymentMethod, cash)} disabled={!isValid} style={{
                         flex: 1,
                         padding: "0.85rem 1.5rem",
                         borderRadius: "14px",
