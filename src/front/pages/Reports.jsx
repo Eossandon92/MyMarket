@@ -9,7 +9,7 @@ import autoTable from "jspdf-autotable";
 
 import { useAuth } from "../context/AuthContext";
 
-const API = "http://localhost:3001/api";
+const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
 const PERIODS = [
     { id: "today", label: "Hoy" },
@@ -81,8 +81,8 @@ export const Reports = () => {
                     items.push({
                         order_id: o.id,
                         date: new Date(o.created_at).toLocaleString("es-CL", { dateStyle: "short", timeStyle: "short" }),
-                        product_name: item.is_promo 
-                            ? `📦 [PACK] ${item.product?.name || `Producto #${item.product_id}`}` 
+                        product_name: item.is_promo
+                            ? `📦 [PACK] ${item.product?.name || `Producto #${item.product_id}`}`
                             : (item.product?.name || `Producto #${item.product_id}`),
                         quantity: item.quantity,
                         price: item.price_at_time,
@@ -105,12 +105,12 @@ export const Reports = () => {
             item.price,
             item.subtotal
         ]);
-        
+
         // Add BOM so Excel opens UTF-8 correctly
-        const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
+        const csvContent = "data:text/csv;charset=utf-8,\uFEFF"
             + headers.join(",") + "\n"
             + rows.map(e => e.join(",")).join("\n");
-            
+
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
@@ -126,7 +126,7 @@ export const Reports = () => {
         doc.text("Detalle de Productos Vendidos", 14, 15);
         doc.setFontSize(10);
         doc.text(`Período: ${periodLabel}`, 14, 22);
-        
+
         const tableColumn = ["Fecha", "N Venta", "Producto", "Cant.", "Precio U.", "Subtotal"];
         const tableRows = detailedSales.map(item => [
             item.date,
@@ -136,7 +136,7 @@ export const Reports = () => {
             fmt(item.price),
             fmt(item.subtotal)
         ]);
-        
+
         autoTable(doc, {
             head: [tableColumn],
             body: tableRows,
@@ -144,7 +144,7 @@ export const Reports = () => {
             styles: { fontSize: 8 },
             headStyles: { fillColor: [39, 174, 96] }
         });
-        
+
         doc.save(`Reporte_Detalle_${periodLabel.replace(/ /g, '_')}.pdf`);
     };
 
@@ -210,7 +210,7 @@ export const Reports = () => {
                             </>
                         )}
                     </div>
-                    
+
                     {data && detailedSales.length > 0 && (
                         <div style={{ display: "flex", gap: "0.75rem" }}>
                             <button onClick={exportToPDF} style={{
@@ -384,7 +384,7 @@ export const Reports = () => {
                                         {detailedSales.length} registros
                                     </span>
                                 </div>
-                                
+
                                 <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
                                     <thead>
                                         <tr style={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>

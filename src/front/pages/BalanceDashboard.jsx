@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
-const API = "http://localhost:3001/api";
+const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
 const PERIODS = [
     { id: "today", label: "Hoy" },
@@ -549,8 +549,8 @@ export const BalanceDashboard = () => {
                                                     {p.qty} uds · margen{" "}
                                                     {p.revenue > 0
                                                         ? Math.round(
-                                                              (p.profit / p.revenue) * 100
-                                                          )
+                                                            (p.profit / p.revenue) * 100
+                                                        )
                                                         : 0}
                                                     %
                                                 </span>
@@ -659,8 +659,8 @@ export const BalanceDashboard = () => {
                                                     {p.qty} uds · margen{" "}
                                                     {p.revenue > 0
                                                         ? Math.round(
-                                                              (p.profit / p.revenue) * 100
-                                                          )
+                                                            (p.profit / p.revenue) * 100
+                                                        )
                                                         : 0}
                                                     %
                                                 </span>

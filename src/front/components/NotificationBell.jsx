@@ -5,7 +5,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAuth } from "../context/AuthContext";
 
-const API = "http://localhost:3001/api";
+const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
 export const NotificationBell = () => {
     const { businessId, token } = useAuth();
