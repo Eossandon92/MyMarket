@@ -9,7 +9,6 @@ groq
 duckduckgo-search
 requests
 python-dotenv
-google-api-python-client
 colorama
 pillow
 openpyxl
@@ -21,6 +20,5 @@ flask-cors
 flask-jwt-extended
 google-genai
 thefuzz
-pandas
 beautifulsoup4
 flask-swagger

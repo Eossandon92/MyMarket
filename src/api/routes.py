@@ -13,8 +13,9 @@ from bs4 import BeautifulSoup
 from google import genai
 from thefuzz import process, fuzz
 import json
-import pandas as pd
 import io
+import csv
+import openpyxl
 
 api = Blueprint('api', __name__)
 
@@ -1060,7 +1061,7 @@ def bulk_add_inventory():
     except Exception as e:
         db.session.rollback()
         print("Error bulk updating stock:", str(e))
-        return jsonify({"msg": "Internal server error"}), 500
+        return jsonify({"msg": "Error updating stock"}), 500
 
 @api.route('/inventory/upload', methods=['POST'])
 @jwt_required()
@@ -1074,203 +1075,144 @@ def upload_inventory_excel():
         return jsonify({"msg": "No file uploaded"}), 400
         
     file = request.files['file']
-    try:
-        filename = file.filename.lower()
-        all_dfs = []
-        sheet_info = []
+    filename = file.filename.lower()
+    
+    # Smart column matching patterns
+    COLUMN_PATTERNS = {
+        'name':        ['NOMBRE DEL PRODUCTO', 'NOMBRE PRODUCTO', 'NOMBRE', 'PRODUCTO', 'ARTICULO', 'ITEM'],
+        'barcode':     ['CODIGO DE BARRA', 'CÓDIGO DE BARRA', 'COD BARRA', 'CODIGO BARRA', 'COD. BARRA', 'CÓDIGO BARRA', 'BARCODE', 'EAN', 'UPC', 'SKU', 'CÓDIGO'],
+        'price':       ['PRECIO VENTA', 'PRECIO', 'PVP', 'VALOR VENTA', 'VENTA'],
+        'cost':        ['PRECIO COSTO', 'COSTO UNITARIO', 'COSTO', 'PRECIO COMPRA', 'COMPRA'],
+        'stock':       ['STOCK', 'CANTIDAD', 'EXISTENCIA', 'INVENTARIO', 'CANT', 'QTY'],
+        'category':    ['CATEGORIA', 'CATEGORÍA', 'CATEG', 'RUBRO', 'FAMILIA', 'GRUPO', 'TIPO'],
+        'description': ['DESCRIPCION', 'DESCRIPCIÓN', 'DETALLE', 'OBS', 'NOTA', 'OBSERVACION'],
+        'min_stock':   ['STOCK MINIMO', 'STOCK MÍNIMO', 'STOCK MIN', 'MINIMO', 'MÍNIMO'],
+    }
 
+    def find_column_idx(cols, field):
+        patterns = COLUMN_PATTERNS.get(field, [])
+        for pattern in patterns:
+            for idx, c in enumerate(cols):
+                c_str = str(c).strip().upper()
+                if pattern in c_str:
+                    return idx
+        return -1
+
+    def clean_number(val):
+        if val is None or val == "": return 0
+        val_str = str(val).strip().replace('$', '').replace(',', '').replace(' ', '')
+        if '.' in val_str and val_str.count('.') == 1:
+            parts = val_str.split('.')
+            if len(parts[1]) == 3:
+                val_str = val_str.replace('.', '')
+        try: return int(float(val_str))
+        except: return 0
+
+    def clean_barcode(val):
+        if val is None or str(val).strip().lower() in ['', 'nan', 'none', 'n/a']:
+            return None
+        val_str = str(val).strip()
+        if val_str.endswith('.0'):
+            val_str = val_str[:-2]
+        return val_str if val_str else None
+
+    parsed_items = []
+    sheet_info = []
+
+    try:
         if filename.endswith('.csv'):
-            df = pd.read_csv(file)
-            df.columns = df.columns.astype(str).str.strip().str.upper()
-            all_dfs.append(df)
-            sheet_info.append({"name": "CSV", "rows": len(df)})
+            file.seek(0)
+            content = file.read().decode('utf-8-sig').splitlines()
+            reader = csv.reader(content)
+            rows = list(reader)
+            if len(rows) < 2:
+                return jsonify({"msg": "CSV vacío o con insuficientes datos"}), 400
+            
+            # Find header row
+            header_idx = 0
+            for idx, row in enumerate(rows[:20]):
+                row_str = " ".join([str(c).upper() for c in row if c])
+                if any(kw in row_str for kw in ["NOMBRE", "PRODUCTO", "PRECIO", "STOCK"]):
+                    header_idx = idx
+                    break
+            
+            cols = [str(c).strip().upper() for c in rows[header_idx]]
+            sheet_info.append({"name": "CSV", "rows": len(rows) - header_idx - 1})
+            
+            idx_map = {field: find_column_idx(cols, field) for field in COLUMN_PATTERNS.keys()}
+            if idx_map['name'] == -1:
+                return jsonify({"msg": "No se encontró la columna de nombre en el CSV"}), 400
+
+            for row in rows[header_idx+1:]:
+                if not row or len(row) <= idx_map['name']: continue
+                name_val = row[idx_map['name']]
+                if not name_val or str(name_val).strip() == "": continue
+                
+                item = {
+                    "name": str(name_val).strip(),
+                    "barcode": clean_barcode(row[idx_map['barcode']]) if idx_map['barcode'] != -1 else None,
+                    "cost": clean_number(row[idx_map['cost']]) if idx_map['cost'] != -1 else 0,
+                    "price": clean_number(row[idx_map['price']]) if idx_map['price'] != -1 else 0,
+                    "stock": clean_number(row[idx_map['stock']]) if idx_map['stock'] != -1 else 0,
+                    "category_name": str(row[idx_map['category']]).strip().title() if idx_map['category'] != -1 else "General",
+                    "description": str(row[idx_map['description']]).strip()[:300] if idx_map['description'] != -1 else "",
+                    "min_stock": clean_number(row[idx_map['min_stock']]) if idx_map['min_stock'] != -1 else 5,
+                }
+                parsed_items.append(item)
+                if len(parsed_items) >= 500: break
 
         elif filename.endswith('.xlsx') or filename.endswith('.xls'):
             import tempfile, os
-            # Save to temp file first (avoids stream/seek issues)
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(filename)[1])
             file.save(tmp)
             tmp.close()
             tmp_path = tmp.name
-
+            
             try:
-                # Strategy 1: Default pandas ExcelFile (openpyxl)
-                xls = None
-                read_error = None
-                try:
-                    xls = pd.ExcelFile(tmp_path, engine='openpyxl')
-                except Exception as e1:
-                    read_error = str(e1)
-                    print(f"openpyxl failed: {e1}")
-                    # Strategy 2: Try without specifying engine (lets pandas guess)
-                    try:
-                        xls = pd.ExcelFile(tmp_path)
-                    except Exception as e2:
-                        read_error = str(e2)
-                        print(f"pandas auto-engine failed: {e2}")
-                        # Strategy 3: Try xlrd for older .xls format
-                        try:
-                            xls = pd.ExcelFile(tmp_path, engine='xlrd')
-                        except Exception as e3:
-                            read_error = str(e3)
-                            print(f"xlrd failed: {e3}")
-
-                if xls is None:
-                    os.unlink(tmp_path)
-                    error_hint = ""
-                    if "encrypt" in read_error.lower() or "password" in read_error.lower():
-                        error_hint = " El archivo parece estar protegido con contraseña. Ábrelo en Excel, guárdalo como un nuevo archivo sin protección y vuelve a intentar."
-                    elif "corrupt" in read_error.lower() or "not a valid" in read_error.lower():
-                        error_hint = " El archivo parece estar corrupto. Ábrelo en Excel, guárdalo como un nuevo .xlsx y vuelve a intentar."
-                    else:
-                        error_hint = " Intenta abrirlo en Excel, haz clic en 'Habilitar edición' si está en Vista Protegida, luego guárdalo como un nuevo archivo .xlsx y súbelo de nuevo."
-                    return jsonify({"msg": f"No se pudo leer el archivo Excel.{error_hint}"}), 400
-
-                for sheet_name in xls.sheet_names:
-                    try:
-                        raw_df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
+                wb = openpyxl.load_workbook(tmp_path, read_only=True, data_only=True)
+                for sheet_name in wb.sheetnames:
+                    sheet = wb[sheet_name]
+                    rows = list(sheet.rows)
+                    if len(rows) < 2: continue
+                    
+                    header_idx = 0
+                    for idx, row in enumerate(rows[:20]):
+                        row_vals = [str(cell.value).upper() for cell in row if cell.value is not None]
+                        row_str = " ".join(row_vals)
+                        if any(kw in row_str for kw in ["NOMBRE", "PRODUCTO", "PRECIO", "STOCK"]):
+                            header_idx = idx
+                            break
+                    
+                    cols = [str(cell.value).strip().upper() if cell.value is not None else "" for cell in rows[header_idx]]
+                    sheet_info.append({"name": sheet_name, "rows": len(rows) - header_idx - 1})
+                    
+                    idx_map = {field: find_column_idx(cols, field) for field in COLUMN_PATTERNS.keys()}
+                    if idx_map['name'] == -1: continue
+                    
+                    for row in rows[header_idx + 1:]:
+                        name_cell = row[idx_map['name']].value
+                        if name_cell is None or str(name_cell).strip() == "": continue
                         
-                        if raw_df.empty or len(raw_df) < 2:
-                            continue
-                        
-                        # Find the header row by looking for product-related keywords
-                        header_idx = 0
-                        for idx, row in raw_df.head(20).iterrows():
-                            row_str = " ".join([str(val).upper() for val in row if pd.notna(val)])
-                            if any(kw in row_str for kw in ["NOMBRE", "PRODUCTO", "DESCRIPCION", "ARTICULO", "ITEM", "CODIGO", "BARRAS", "PRECIO", "STOCK"]):
-                                header_idx = idx
-                                break
-                        
-                        df = raw_df.copy()
-                        df.columns = df.iloc[header_idx].astype(str).str.strip().str.upper()
-                        df = df[header_idx + 1:].reset_index(drop=True)
-                        
-                        if len(df.columns) < 2 or len(df) < 1:
-                            continue
-                            
-                        all_dfs.append(df)
-                        sheet_info.append({"name": sheet_name, "rows": len(df)})
-                    except Exception as sheet_err:
-                        print(f"Error reading sheet '{sheet_name}': {sheet_err}")
-                        continue
-                
-                # Cleanup temp file
-                try:
-                    os.unlink(tmp_path)
-                except:
-                    pass
-                        
+                        item = {
+                            "name": str(name_cell).strip(),
+                            "barcode": clean_barcode(row[idx_map['barcode']].value) if idx_map['barcode'] != -1 else None,
+                            "cost": clean_number(row[idx_map['cost']].value) if idx_map['cost'] != -1 else 0,
+                            "price": clean_number(row[idx_map['price']].value) if idx_map['price'] != -1 else 0,
+                            "stock": clean_number(row[idx_map['stock']].value) if idx_map['stock'] != -1 else 0,
+                            "category_name": str(row[idx_map['category']].value).strip().title() if idx_map['category'] != -1 and row[idx_map['category']].value else "General",
+                            "description": str(row[idx_map['description']].value).strip()[:300] if idx_map['description'] != -1 and row[idx_map['description']].value else "",
+                            "min_stock": clean_number(row[idx_map['min_stock']].value) if idx_map['min_stock'] != -1 else 5,
+                        }
+                        parsed_items.append(item)
+                        if len(parsed_items) >= 500: break
+                    if len(parsed_items) >= 500: break
+                os.unlink(tmp_path)
             except Exception as e:
-                try:
-                    os.unlink(tmp_path)
-                except:
-                    pass
-                print("Excel Parse Error:", str(e))
-                return jsonify({"msg": "Error leyendo el archivo Excel. Intenta abrirlo en Excel, habilitar edición si está en Vista Protegida, y guardarlo como un nuevo archivo .xlsx."}), 400
+                if os.path.exists(tmp_path): os.unlink(tmp_path)
+                raise e
         else:
-            return jsonify({"msg": "Formato de archivo no soportado. Sube un excel (.xlsx) o .csv"}), 400
-        
-        if not all_dfs:
-            return jsonify({"msg": "No se encontraron datos en el archivo. Verifica que las hojas contengan información."}), 400
+            return jsonify({"msg": "Formato no soportado"}), 400
 
-        # Smart column matching patterns: DB field -> possible column name fragments (longer first = more precise)
-        COLUMN_PATTERNS = {
-            'name':        ['NOMBRE DEL PRODUCTO', 'NOMBRE PRODUCTO', 'NOMBRE', 'PRODUCTO', 'ARTICULO', 'ITEM'],
-            'barcode':     ['CODIGO DE BARRA', 'CÓDIGO DE BARRA', 'COD BARRA', 'CODIGO BARRA', 'COD. BARRA', 'CÓDIGO BARRA', 'BARCODE', 'EAN', 'UPC', 'SKU', 'CÓDIGO'],
-            'price':       ['PRECIO VENTA', 'PRECIO', 'PVP', 'VALOR VENTA', 'VENTA'],
-            'cost':        ['PRECIO COSTO', 'COSTO UNITARIO', 'COSTO', 'PRECIO COMPRA', 'COMPRA'],
-            'stock':       ['STOCK', 'CANTIDAD', 'EXISTENCIA', 'INVENTARIO', 'CANT', 'QTY'],
-            'category':    ['CATEGORIA', 'CATEGORÍA', 'CATEG', 'RUBRO', 'FAMILIA', 'GRUPO', 'TIPO'],
-            'description': ['DESCRIPCION', 'DESCRIPCIÓN', 'DETALLE', 'OBS', 'NOTA', 'OBSERVACION'],
-            'min_stock':   ['STOCK MINIMO', 'STOCK MÍNIMO', 'STOCK MIN', 'MINIMO', 'MÍNIMO'],
-        }
-
-        def find_column(cols, field):
-            patterns = COLUMN_PATTERNS.get(field, [])
-            for pattern in patterns:
-                for c in cols:
-                    c_str = str(c).strip().upper()
-                    if c_str in ('NAN', '', 'NONE'):
-                        continue
-                    if pattern in c_str:
-                        return c
-            return None
-        
-        parsed_items = []
-        columns_detected = {}
-        
-        def clean_number(val):
-            if pd.isna(val) or val == "": return 0
-            val_str = str(val).strip().replace('$', '').replace(',', '').replace(' ', '')
-            # Handle dots as thousands separators (common in Chilean format: 1.500)
-            if '.' in val_str and val_str.count('.') == 1:
-                parts = val_str.split('.')
-                if len(parts[1]) == 3:  # e.g. "1.500" = 1500
-                    val_str = val_str.replace('.', '')
-            try: return int(float(val_str))
-            except: return 0
-
-        def clean_barcode(val):
-            if pd.isna(val) or str(val).strip().lower() in ['', 'nan', 'none', 'n/a']:
-                return None
-            val_str = str(val).strip()
-            if val_str.endswith('.0'):
-                val_str = val_str[:-2]
-            return val_str if val_str else None
-
-        for df in all_dfs:
-            cols = df.columns.tolist()
-            
-            name_col = find_column(cols, 'name')
-            barcode_col = find_column(cols, 'barcode')
-            price_col = find_column(cols, 'price')
-            cost_col = find_column(cols, 'cost')
-            stock_col = find_column(cols, 'stock')
-            cat_col = find_column(cols, 'category')
-            desc_col = find_column(cols, 'description')
-            min_stock_col = find_column(cols, 'min_stock')
-            
-            # If no name column, try description as fallback
-            if not name_col and desc_col:
-                name_col = desc_col
-                desc_col = None
-            
-            if not name_col:
-                continue
-            
-            columns_detected = {k: v for k, v in {
-                "nombre": name_col, "codigo_barras": barcode_col,
-                "precio": price_col, "costo": cost_col,
-                "stock": stock_col, "categoria": cat_col,
-                "descripcion": desc_col, "stock_minimo": min_stock_col
-            }.items() if v}
-
-            for _, row in df.iterrows():
-                name_val = row.get(name_col)
-                if pd.isna(name_val) or str(name_val).strip() == "": continue
-                
-                cat_val = row.get(cat_col) if cat_col else "General"
-                if pd.isna(cat_val) or str(cat_val).strip() == "": cat_val = "General"
-                
-                desc_val = row.get(desc_col) if desc_col else ""
-                if pd.isna(desc_val): desc_val = ""
-
-                item = {
-                    "name": str(name_val).strip(),
-                    "barcode": clean_barcode(row.get(barcode_col)) if barcode_col else None,
-                    "cost": clean_number(row.get(cost_col)) if cost_col else 0,
-                    "price": clean_number(row.get(price_col)) if price_col else 0,
-                    "stock": clean_number(row.get(stock_col)) if stock_col else 0,
-                    "category_name": str(cat_val).strip().title(),
-                    "description": str(desc_val).strip()[:300] if desc_val else "",
-                    "min_stock": clean_number(row.get(min_stock_col)) if min_stock_col else 5,
-                }
-                parsed_items.append(item)
-                
-                if len(parsed_items) >= 500: break
-            
-            if len(parsed_items) >= 500: break
-            
         return jsonify({
             "items": parsed_items,
             "sheet_info": sheet_info,
