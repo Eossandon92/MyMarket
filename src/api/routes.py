@@ -1093,7 +1093,7 @@ def upload_inventory_excel():
         patterns = COLUMN_PATTERNS.get(field, [])
         for pattern in patterns:
             for idx, c in enumerate(cols):
-                c_str = str(c).strip().upper()
+                c_str = str(c).strip().upper() if c is not None else ""
                 if pattern in c_str:
                     return idx
         return -1
@@ -1118,6 +1118,7 @@ def upload_inventory_excel():
 
     parsed_items = []
     sheet_info = []
+    latest_columns_detected = {}
 
     try:
         if filename.endswith('.csv'):
@@ -1137,26 +1138,26 @@ def upload_inventory_excel():
                     break
             
             cols = [str(c).strip().upper() for c in rows[header_idx]]
+            latest_columns_detected = {field: find_column_idx(cols, field) for field in COLUMN_PATTERNS.keys()}
             sheet_info.append({"name": "CSV", "rows": len(rows) - header_idx - 1})
             
-            idx_map = {field: find_column_idx(cols, field) for field in COLUMN_PATTERNS.keys()}
-            if idx_map['name'] == -1:
+            if latest_columns_detected['name'] == -1:
                 return jsonify({"msg": "No se encontró la columna de nombre en el CSV"}), 400
 
             for row in rows[header_idx+1:]:
-                if not row or len(row) <= idx_map['name']: continue
-                name_val = row[idx_map['name']]
+                if not row or len(row) <= latest_columns_detected['name']: continue
+                name_val = row[latest_columns_detected['name']]
                 if not name_val or str(name_val).strip() == "": continue
                 
                 item = {
                     "name": str(name_val).strip(),
-                    "barcode": clean_barcode(row[idx_map['barcode']]) if idx_map['barcode'] != -1 else None,
-                    "cost": clean_number(row[idx_map['cost']]) if idx_map['cost'] != -1 else 0,
-                    "price": clean_number(row[idx_map['price']]) if idx_map['price'] != -1 else 0,
-                    "stock": clean_number(row[idx_map['stock']]) if idx_map['stock'] != -1 else 0,
-                    "category_name": str(row[idx_map['category']]).strip().title() if idx_map['category'] != -1 else "General",
-                    "description": str(row[idx_map['description']]).strip()[:300] if idx_map['description'] != -1 else "",
-                    "min_stock": clean_number(row[idx_map['min_stock']]) if idx_map['min_stock'] != -1 else 5,
+                    "barcode": clean_barcode(row[latest_columns_detected['barcode']]) if latest_columns_detected['barcode'] != -1 and len(row) > latest_columns_detected['barcode'] else None,
+                    "cost": clean_number(row[latest_columns_detected['cost']]) if latest_columns_detected['cost'] != -1 and len(row) > latest_columns_detected['cost'] else 0,
+                    "price": clean_number(row[latest_columns_detected['price']]) if latest_columns_detected['price'] != -1 and len(row) > latest_columns_detected['price'] else 0,
+                    "stock": clean_number(row[latest_columns_detected['stock']]) if latest_columns_detected['stock'] != -1 and len(row) > latest_columns_detected['stock'] else 0,
+                    "category_name": str(row[latest_columns_detected['category']]).strip().title() if latest_columns_detected['category'] != -1 and len(row) > latest_columns_detected['category'] else "General",
+                    "description": str(row[latest_columns_detected['description']]).strip()[:300] if latest_columns_detected['description'] != -1 and len(row) > latest_columns_detected['description'] else "",
+                    "min_stock": clean_number(row[latest_columns_detected['min_stock']]) if latest_columns_detected['min_stock'] != -1 and len(row) > latest_columns_detected['min_stock'] else 5,
                 }
                 parsed_items.append(item)
                 if len(parsed_items) >= 500: break
@@ -1184,24 +1185,24 @@ def upload_inventory_excel():
                             break
                     
                     cols = [str(cell.value).strip().upper() if cell.value is not None else "" for cell in rows[header_idx]]
+                    latest_columns_detected = {field: find_column_idx(cols, field) for field in COLUMN_PATTERNS.keys()}
                     sheet_info.append({"name": sheet_name, "rows": len(rows) - header_idx - 1})
                     
-                    idx_map = {field: find_column_idx(cols, field) for field in COLUMN_PATTERNS.keys()}
-                    if idx_map['name'] == -1: continue
+                    if latest_columns_detected['name'] == -1: continue
                     
                     for row in rows[header_idx + 1:]:
-                        name_cell = row[idx_map['name']].value
+                        name_cell = row[latest_columns_detected['name']].value
                         if name_cell is None or str(name_cell).strip() == "": continue
                         
                         item = {
                             "name": str(name_cell).strip(),
-                            "barcode": clean_barcode(row[idx_map['barcode']].value) if idx_map['barcode'] != -1 else None,
-                            "cost": clean_number(row[idx_map['cost']].value) if idx_map['cost'] != -1 else 0,
-                            "price": clean_number(row[idx_map['price']].value) if idx_map['price'] != -1 else 0,
-                            "stock": clean_number(row[idx_map['stock']].value) if idx_map['stock'] != -1 else 0,
-                            "category_name": str(row[idx_map['category']].value).strip().title() if idx_map['category'] != -1 and row[idx_map['category']].value else "General",
-                            "description": str(row[idx_map['description']].value).strip()[:300] if idx_map['description'] != -1 and row[idx_map['description']].value else "",
-                            "min_stock": clean_number(row[idx_map['min_stock']].value) if idx_map['min_stock'] != -1 else 5,
+                            "barcode": clean_barcode(row[latest_columns_detected['barcode']].value) if latest_columns_detected['barcode'] != -1 else None,
+                            "cost": clean_number(row[latest_columns_detected['cost']].value) if latest_columns_detected['cost'] != -1 else 0,
+                            "price": clean_number(row[latest_columns_detected['price']].value) if latest_columns_detected['price'] != -1 else 0,
+                            "stock": clean_number(row[latest_columns_detected['stock']].value) if latest_columns_detected['stock'] != -1 else 0,
+                            "category_name": str(row[latest_columns_detected['category']].value).strip().title() if latest_columns_detected['category'] != -1 and row[latest_columns_detected['category']].value else "General",
+                            "description": str(row[latest_columns_detected['description']].value).strip()[:300] if latest_columns_detected['description'] != -1 and row[latest_columns_detected['description']].value else "",
+                            "min_stock": clean_number(row[latest_columns_detected['min_stock']].value) if latest_columns_detected['min_stock'] != -1 else 5,
                         }
                         parsed_items.append(item)
                         if len(parsed_items) >= 500: break
@@ -1216,13 +1217,14 @@ def upload_inventory_excel():
         return jsonify({
             "items": parsed_items,
             "sheet_info": sheet_info,
-            "columns_detected": columns_detected
+            "columns_detected": latest_columns_detected
         }), 200
 
     except Exception as e:
         print("Error parsing excel:", str(e))
         import traceback; traceback.print_exc()
         return jsonify({"msg": "Error al procesar el archivo. Asegúrate de que no esté vacío o corrupto."}), 500
+
 
 @api.route('/inventory/confirm', methods=['POST'])
 @jwt_required()
