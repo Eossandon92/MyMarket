@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PlusCircle, Search, Edit2, Trash2, X, Tag, ArrowLeft } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, API } from "../context/AuthContext";
 
 export const CategoryMaintenance = () => {
     const { businessId, token } = useAuth();
@@ -21,7 +21,7 @@ export const CategoryMaintenance = () => {
         try {
             if (!businessId || !token) return;
 
-            const response = await fetch(`http://localhost:3001/api/categories?business_id=${businessId}`, {
+            const response = await fetch(`${API}/categories?business_id=${businessId}`, {
                 headers: { "Authorization": `Bearer ${token}` }
             });
             if (response.ok) {
@@ -75,8 +75,8 @@ export const CategoryMaintenance = () => {
 
         try {
             const url = editingCategory
-                ? `http://localhost:3001/api/categories/${editingCategory.id}`
-                : "http://localhost:3001/api/categories";
+                ? `${API}/categories/${editingCategory.id}`
+                : `${API}/categories`;
 
             const method = editingCategory ? "PUT" : "POST";
 
@@ -107,7 +107,7 @@ export const CategoryMaintenance = () => {
     const handleDelete = async (id) => {
         if (window.confirm("¿Estás seguro de que deseas eliminar esta categoría?")) {
             try {
-                const response = await fetch(`http://localhost:3001/api/categories/${id}`, {
+                const response = await fetch(`${API}/categories/${id}`, {
                     method: "DELETE",
                     headers: { "Authorization": `Bearer ${token}` }
                 });

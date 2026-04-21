@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Edit2, Trash2, PlusCircle, Scan, Search } from "lucide-react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
-import { useAuth } from "../context/AuthContext";
+import { useAuth, API } from "../context/AuthContext";
 
 export const ProductMaintenance = () => {
   const { businessId, token } = useAuth();
@@ -207,7 +207,7 @@ export const ProductMaintenance = () => {
     try {
       if (!businessId || !token) return;
 
-      const response = await fetch(`http://localhost:3001/api/categories?business_id=${businessId}`, {
+      const response = await fetch(`${API}/categories?business_id=${businessId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -223,7 +223,7 @@ export const ProductMaintenance = () => {
     try {
       if (!businessId || !token) return;
 
-      const response = await fetch(`http://localhost:3001/api/products?business_id=${businessId}`, {
+      const response = await fetch(`${API}/products?business_id=${businessId}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (response.ok) {
@@ -285,7 +285,7 @@ export const ProductMaintenance = () => {
 
     setIsGenerating(true);
     try {
-      const response = await fetch("http://localhost:3001/api/generate-image", {
+      const response = await fetch(`${API}/generate-image`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -329,8 +329,8 @@ export const ProductMaintenance = () => {
 
     try {
       const url = editingId
-        ? `http://localhost:3001/api/products/${editingId}`
-        : `http://localhost:3001/api/products`;
+        ? `${API}/products/${editingId}`
+        : `${API}/products`;
 
       const method = editingId ? "PUT" : "POST";
 
@@ -360,7 +360,7 @@ export const ProductMaintenance = () => {
   const handleDelete = async (id) => {
     if (window.confirm("¿Seguro que deseas eliminar este producto?")) {
       try {
-        const response = await fetch(`http://localhost:3001/api/products/${id}`, {
+        const response = await fetch(`${API}/products/${id}`, {
           method: "DELETE",
           headers: { "Authorization": `Bearer ${token}` }
         });
