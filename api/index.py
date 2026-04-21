@@ -1,20 +1,27 @@
 import sys
 import os
 
-# Asegurar que la carpeta 'src' y la raíz estén en el path
+# Añadir la carpeta 'src' al path
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 src_path = os.path.join(path, 'src')
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
-if path not in sys.path:
-    sys.path.insert(1, path)
 
 try:
     from app import app
-    print("App importada exitosamente")
 except Exception as e:
-    print(f"ERROR CRÍTICO AL IMPORTAR APP: {e}")
+    print(f"Error importando app: {e}")
     raise e
 
-# No usamos el middleware por ahora para descartar errores de ruteo
-# Vercel debería pasar la ruta completa según vercel.json
+# Middleware para asegurar que Flask reciba el prefijo /api
+# Esto arregla el error de "Unexpected end of JSON input" que suele ser un 404 oculto
+class VercelPathFix(object):
+    def __init__(self, app):
+        self.app = app
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        if not path.startswith('/api'):
+            environ['PATH_INFO'] = '/api' + path
+        return self.app(environ, start_response)
+
+app.wsgi_app = VercelPathFix(app.wsgi_app)
