@@ -1,0 +1,35 @@
+[project]
+name = "mymarket"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "flask",
+    "psycopg2-binary",
+    "gunicorn",
+    "cloudinary",
+    "flask-admin==2.0.0",
+    "typing-extensions",
+    "wtforms==3.1.2",
+    "groq",
+    "duckduckgo-search",
+    "requests",
+    "python-dotenv",
+    "google-api-python-client",
+    "colorama",
+    "pillow",
+    "openpyxl",
+    "cryptography",
+    "flask-migrate",
+    "flask-sqlalchemy",
+    "sqlalchemy",
+    "flask-cors",
+    "flask-jwt-extended",
+    "google-genai",
+    "thefuzz",
+    "pandas",
+    "beautifulsoup4",
+    "flask-swagger"
+]
+
+[tool.uv]
+environments = ["sys_platform == 'linux'"]
