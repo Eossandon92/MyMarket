@@ -377,8 +377,8 @@ export const AddStock = () => {
                     style={{ display: 'none' }}
                 />
                 <a
-                    href="/Plantilla_Inventario_MyMarket.xlsx"
-                    download="Plantilla_Inventario_MyMarket.xlsx"
+                    href="/Plantilla_Inventario_Zoko.xlsx"
+                    download="Plantilla_Inventario_Zoko.xlsx"
                     style={{
                         background: "white", color: "var(--color-primary)", border: "2px solid var(--color-primary)", padding: "1rem 1.5rem", borderRadius: "12px",
                         fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, justifyContent: "center",

@@ -5,8 +5,8 @@ from flask import Flask, request, jsonify, url_for, Blueprint
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jwt
 from api.models import db, User, Product, Order, OrderItem, Category, CashSession, Business
 from werkzeug.security import generate_password_hash, check_password_hash
-from api.utils import generate_sitemap, APIException
 from flask_cors import CORS
+from api.utils import generate_sitemap, APIException, encrypt_value
 import os
 import requests
 from bs4 import BeautifulSoup
@@ -120,6 +120,15 @@ def update_business(id):
         business.contact_email = data['contact_email'].strip() if data['contact_email'] else None
     if 'is_active' in data:
         business.is_active = bool(data['is_active'])
+    
+    # Billing Configuration
+    if 'billing_api_key' in data and data['billing_api_key']:
+        # Encrypt the API key before saving
+        business.billing_api_key = encrypt_value(data['billing_api_key'])
+    if 'billing_branch_name' in data:
+        business.billing_branch_name = data['billing_branch_name'].strip() if data['billing_branch_name'] else None
+    if 'billing_pos_name' in data:
+        business.billing_pos_name = data['billing_pos_name'].strip() if data['billing_pos_name'] else None
 
     db.session.commit()
     return jsonify(business.serialize()), 200
@@ -604,6 +613,18 @@ def create_order():
 
     new_order.total_price = total_price
     db.session.commit()
+
+    # --- Integración con Facturación Electrónica (SII) ---
+    try:
+        from api.sii_service import emitir_documento_electronico
+        from api.models import Business
+        business = Business.query.get(new_order.business_id)
+        # Llamamos al servicio (actualmente en modo Stub)
+        sii_response = emitir_documento_electronico(new_order, business)
+        db.session.commit() # Guardar los datos de SII asignados (folio, pdf, status)
+    except Exception as e:
+        print(f"Error procesando facturación electrónica: {e}")
+        db.session.rollback()
 
     return jsonify(new_order.serialize()), 201
 

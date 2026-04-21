@@ -51,25 +51,23 @@ export const Login = () => {
                 background: "white", position: "relative", zIndex: 2,
                 boxShadow: "4px 0 30px rgba(0,0,0,0.08)"
             }}>
-                {/* Logo */}
-                <div style={{ marginBottom: "2.5rem" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
-                        <div style={{
-                            width: "48px", height: "48px", background: "#e8f5e9",
-                            borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center"
-                        }}>
-                            <ShoppingBag size={26} color="#27ae60" />
-                        </div>
-                        <span style={{ fontSize: "1.6rem", fontWeight: 800, color: "#0f172a" }}>
-                            My<span style={{ color: "#27ae60" }}>Market</span>
-                        </span>
+                {/* Logo unificado con Sidebar */}
+                <div className="sidebar-logo" style={{ padding: '0', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+                    <div className="sidebar-logo-icon" style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2ecc71', borderRadius: '12px', color: 'white' }}>
+                        <ShoppingBag size={24} />
                     </div>
+                    <h2 style={{ fontSize: "1.9rem", fontWeight: 950, margin: 0, letterSpacing: "-1.2px", display: 'flex' }}>
+                        <span style={{ color: "#fbc531" }}>Z</span>
+                        <span style={{ color: "#eb4d4b" }}>o</span>
+                        <span style={{ color: "#27ae60" }}>k</span>
+                        <span style={{ color: "#00a8ff" }}>o</span>
+                    </h2>
                 </div>
 
                 {/* Welcome text */}
                 <div style={{ marginBottom: "2rem" }}>
                     <h1 style={{ margin: "0 0 0.5rem", fontSize: "1.75rem", fontWeight: 800, color: "#0f172a" }}>
-                        Bienvenido 👋
+                        Bienvenido
                     </h1>
                     <p style={{ margin: 0, color: "#64748b", fontSize: "0.95rem", lineHeight: 1.5 }}>
                         Inicia sesión para acceder a tu punto de venta
@@ -156,7 +154,7 @@ export const Login = () => {
 
                 {/* Footer */}
                 <div style={{ marginTop: "2.5rem", textAlign: "center", color: "#94a3b8", fontSize: "0.8rem" }}>
-                    <p style={{ margin: 0 }}>Sistema de Punto de Venta — MyMarket</p>
+                    <p style={{ margin: 0 }}>Sistema de Punto de Venta — Zoko by Ossembly</p>
                     <p style={{ margin: "0.25rem 0 0", fontWeight: 500 }}>© 2026 Todos los derechos reservados</p>
                 </div>
             </div>
@@ -177,7 +175,7 @@ export const Login = () => {
 
                 <img
                     src={loginBg}
-                    alt="MyMarket Minimarket"
+                    alt="Zoko Minimarket"
                     style={{
                         width: "100%", height: "100%",
                         objectFit: "cover", objectPosition: "center",

@@ -33,11 +33,16 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
 
     return (
         <aside className="pos-sidebar">
-            <div className="sidebar-logo">
-                <div className="sidebar-logo-icon">
+            <div className="sidebar-logo" style={{ padding: '1.5rem 1.25rem', gap: '1rem' }}>
+                <div className="sidebar-logo-icon" style={{ width: '40px', height: '40px' }}>
                     <ShoppingBag size={24} />
                 </div>
-                <h2>MyMarket</h2>
+                <h2 style={{ fontSize: "1.9rem", fontWeight: 950, margin: 0, letterSpacing: "-1.2px" }}>
+                    <span style={{ color: "#fbc531" }}>Z</span>
+                    <span style={{ color: "#eb4d4b" }}>o</span>
+                    <span style={{ color: "#27ae60" }}>k</span>
+                    <span style={{ color: "#00a8ff" }}>o</span>
+                </h2>
             </div>
 
 

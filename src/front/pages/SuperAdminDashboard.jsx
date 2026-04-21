@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Building2, Plus, Mail, Lock, ShieldAlert, LogOut, CheckCircle, Search, Store, User, Edit2, Phone, MapPin, FileText, Power } from "lucide-react";
+import { Building2, Plus, Mail, Lock, ShieldAlert, LogOut, CheckCircle, Search, Store, User, Edit2, Phone, MapPin, FileText, Power, Key, Network } from "lucide-react";
 
 export const SuperAdminDashboard = () => {
     const { token, logout, user, isSuperAdmin } = useAuth();
@@ -111,7 +111,10 @@ export const SuperAdminDashboard = () => {
             phone: biz.phone || "",
             contact_email: biz.contact_email || "",
             subscription_plan: biz.subscription_plan || "basico",
-            is_active: biz.is_active !== false
+            is_active: biz.is_active !== false,
+            billing_api_key: "", // Always start empty for security, only update if user types something
+            billing_branch_name: biz.billing_branch_name || "",
+            billing_pos_name: biz.billing_pos_name || ""
         });
         setEditSuccess("");
     };
@@ -446,6 +449,63 @@ export const SuperAdminDashboard = () => {
                                             transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.15)"
                                         }} />
                                     </button>
+                                </div>
+
+                                <hr style={{ border: "none", borderTop: "1px dashed #cbd5e1", margin: "0.5rem 0" }} />
+
+                                {/* Billing Section */}
+                                <div>
+                                    <h4 style={{ margin: "0 0 1rem", fontSize: "0.85rem", fontWeight: 800, color: "#1e293b", display: "flex", alignItems: "center", gap: "0.5rem", textTransform: "uppercase", letterSpacing: "0.025em" }}>
+                                        <Key size={14} color="#3b82f6" />
+                                        Configuración de Facturación (SII)
+                                    </h4>
+                                    
+                                    <div style={{ background: "#f8fafc", padding: "1rem", borderRadius: "12px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "1rem" }}>
+                                        <div>
+                                            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "0.4rem" }}>
+                                                API KEY DE FACTURACIÓN {editModal.has_billing_key && <span style={{ color: "#22c55e" }}>(✓ Configurada)</span>}
+                                            </label>
+                                            <div style={{ position: "relative" }}>
+                                                <Key size={14} color="#94a3b8" style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)" }} />
+                                                <input
+                                                    type="password"
+                                                    value={editData.billing_api_key}
+                                                    onChange={(e) => setEditData({ ...editData, billing_api_key: e.target.value })}
+                                                    placeholder={editModal.has_billing_key ? "Dejar en blanco para mantener actual" : "Ingresar nueva API Key..."}
+                                                    style={{ ...inputStyle, paddingLeft: "2.2rem", padding: "0.5rem 0.75rem 0.5rem 2.2rem", fontSize: "0.85rem" }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+                                            <div>
+                                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "0.4rem" }}>SUCURSAL</label>
+                                                <div style={{ position: "relative" }}>
+                                                    <Building2 size={14} color="#94a3b8" style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)" }} />
+                                                    <input
+                                                        type="text"
+                                                        value={editData.billing_branch_name}
+                                                        onChange={(e) => setEditData({ ...editData, billing_branch_name: e.target.value })}
+                                                        placeholder="Casa Matriz"
+                                                        style={{ ...inputStyle, paddingLeft: "2.2rem", padding: "0.5rem 0.75rem 0.5rem 2.2rem", fontSize: "0.85rem" }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#64748b", marginBottom: "0.4rem" }}>PTO. VENTA</label>
+                                                <div style={{ position: "relative" }}>
+                                                    <Network size={14} color="#94a3b8" style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)" }} />
+                                                    <input
+                                                        type="text"
+                                                        value={editData.billing_pos_name}
+                                                        onChange={(e) => setEditData({ ...editData, billing_pos_name: e.target.value })}
+                                                        placeholder="Caja 1"
+                                                        style={{ ...inputStyle, paddingLeft: "2.2rem", padding: "0.5rem 0.75rem 0.5rem 2.2rem", fontSize: "0.85rem" }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

@@ -173,23 +173,49 @@ export const PromotionsMaintenance = () => {
                     <head>
                         <title>Imprimir - ${promo.name}</title>
                         <style>
-                            @page { margin: 0; }
-                            body { 
-                                display: flex; flex-direction: column; align-items: center; justify-content: flex-start; 
-                                font-family: sans-serif; padding-top: 20px; 
+                            @page { 
+                                margin: 0; 
+                                size: auto;
                             }
-                            h2 { margin: 0 0 10px 0; font-size: 16px; text-align: center; }
-                            .barcode-container svg { width: auto; max-width: 100%; height: auto; }
+                            body { 
+                                margin: 0;
+                                padding: 10px;
+                                display: flex; 
+                                flex-direction: column; 
+                                align-items: center; 
+                                justify-content: flex-start; 
+                                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                                width: 100%;
+                            }
+                            h2 { 
+                                margin: 0 0 5px 0; 
+                                font-size: 14px; 
+                                text-align: center; 
+                                width: 100%;
+                                word-wrap: break-word;
+                            }
+                            .barcode-container {
+                                width: 100%;
+                                display: flex;
+                                justify-content: center;
+                            }
+                            .barcode-container svg { 
+                                width: 100% !important; 
+                                height: auto !important; 
+                                max-width: 100%; 
+                            }
                         </style>
                     </head>
                     <body>
                         <h2>${promo.name}</h2>
                         <div class="barcode-container">${svgElement.innerHTML}</div>
                         <script>
-                            setTimeout(() => {
-                                window.print();
-                                window.close();
-                            }, 300);
+                            window.onload = function() {
+                                setTimeout(() => {
+                                    window.print();
+                                    window.close();
+                                }, 500);
+                            };
                         </script>
                     </body>
                 </html>

@@ -39,3 +39,37 @@ def generate_sitemap(app):
         <p>Start working on your project by following the <a href="https://start.4geeksacademy.com/starters/full-stack" target="_blank">Quick Start</a></p>
         <p>Remember to specify a real endpoint path like: </p>
         <ul style="text-align: left;">"""+links_html+"</ul></div>"
+
+import os
+from cryptography.fernet import Fernet
+
+def get_encryption_key():
+    """Retrieves the encryption key from environment variables."""
+    key = os.environ.get("ENCRYPTION_KEY")
+    if not key:
+        # Fallback for dev, but in production this MUST be set
+        return Fernet.generate_key()
+    return key.encode()
+
+def encrypt_value(value: str) -> str:
+    """Encrypts a string value using Fernet symmetric encryption."""
+    if not value:
+        return None
+    try:
+        f = Fernet(get_encryption_key())
+        return f.encrypt(value.encode()).decode()
+    except Exception as e:
+        print(f"Encryption error: {e}")
+        return None
+
+def decrypt_value(encrypted_value: str) -> str:
+    """Decrypts an encrypted string value back to plain text."""
+    if not encrypted_value:
+        return None
+    try:
+        f = Fernet(get_encryption_key())
+        return f.decrypt(encrypted_value.encode()).decode()
+    except Exception as e:
+        print(f"Decryption error: {e}")
+        return None
+

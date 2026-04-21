@@ -11,8 +11,8 @@ export const AuthProvider = ({ children }) => {
 
     // On mount: restore session from localStorage if token is still valid
     useEffect(() => {
-        const storedToken = localStorage.getItem("mymarket_token");
-        const storedUser = localStorage.getItem("mymarket_user");
+        const storedToken = localStorage.getItem("zoko_token");
+        const storedUser = localStorage.getItem("zoko_user");
         if (storedToken && storedUser) {
             setToken(storedToken);
             setUser(JSON.parse(storedUser));
@@ -31,16 +31,16 @@ export const AuthProvider = ({ children }) => {
         if (!res.ok) throw new Error(data.msg || "Error al iniciar sesión");
 
         // Persist to localStorage
-        localStorage.setItem("mymarket_token", data.token);
-        localStorage.setItem("mymarket_user", JSON.stringify(data.user));
+        localStorage.setItem("zoko_token", data.token);
+        localStorage.setItem("zoko_user", JSON.stringify(data.user));
         setToken(data.token);
         setUser(data.user);
         return data.user;
     };
 
     const logout = () => {
-        localStorage.removeItem("mymarket_token");
-        localStorage.removeItem("mymarket_user");
+        localStorage.removeItem("zoko_token");
+        localStorage.removeItem("zoko_user");
         setToken(null);
         setUser(null);
     };

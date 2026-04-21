@@ -74,7 +74,7 @@ export const CashRegister = () => {
         const doc = new jsPDF();
 
         doc.setFontSize(22);
-        doc.text("Cierre de Caja - MyMarket", 14, 20);
+        doc.text("Cierre de Caja - Zoko", 14, 20);
 
         doc.setFontSize(11);
         doc.setTextColor(100);

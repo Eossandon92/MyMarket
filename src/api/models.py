@@ -20,6 +20,11 @@ class Business(db.Model):
     contact_email = db.Column(String(120), nullable=True)   # business contact email
     is_active = db.Column(db.Boolean, nullable=False, server_default="true")
 
+    # API Billing Credentials (Encrypted)
+    billing_api_key = db.Column(db.String(500), nullable=True) 
+    billing_branch_name = db.Column(db.String(120), nullable=True)
+    billing_pos_name = db.Column(db.String(120), nullable=True)
+
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 
     users = db.relationship("User", backref="business", lazy=True)
@@ -41,6 +46,11 @@ class Business(db.Model):
             "phone": self.phone,
             "contact_email": self.contact_email,
             "is_active": self.is_active if self.is_active is not None else True,
+            "billing_branch_name": self.billing_branch_name,
+            "billing_pos_name": self.billing_pos_name,
+            # We DON'T serialize the API key for security unless specifically requested, 
+            # or we serialize it as a flag.
+            "has_billing_key": True if self.billing_api_key else False,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
@@ -141,6 +151,13 @@ class Order(db.Model):
     total_price: Mapped[float] = mapped_column(nullable=False, default=0.0)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="completed")
     payment_method: Mapped[str] = mapped_column(String(50), nullable=False, default="cash")
+    
+    # Billing/SII Integration Fields
+    sii_document_type = db.Column(db.Integer, nullable=True)  # e.g., 39 (Boleta), 33 (Factura)
+    sii_folio = db.Column(db.Integer, nullable=True)          # Official folio number
+    sii_pdf_url = db.Column(String(255), nullable=True)       # URL to the PDF receipt/boleta
+    sii_status = db.Column(String(50), nullable=True, default="pending") # pending, accepted, rejected, offline
+
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     items = db.relationship("OrderItem", backref="order", lazy=True)
 
@@ -152,6 +169,10 @@ class Order(db.Model):
             "total_price": self.total_price,
             "status": self.status,
             "payment_method": self.payment_method,
+            "sii_document_type": self.sii_document_type,
+            "sii_folio": self.sii_folio,
+            "sii_pdf_url": self.sii_pdf_url,
+            "sii_status": self.sii_status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "items": [item.serialize() for item in self.items]
         }

@@ -1,5 +1,5 @@
 {
-	"name": "react-hello-webapp",
+	"name": "zoko-webapp",
 	"engines": {
 		"node": ">=20.0.0"
 	},

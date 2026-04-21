@@ -18,41 +18,108 @@ export const ReceiptModal = ({ order, cart, paymentMethod, cashReceived, busines
     const dateStr = now.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
     const timeStr = now.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 
-    const handlePrint = () => window.print();
+    const handlePrint = () => {
+        const printWindow = window.open('', '_blank', 'width=400,height=600');
+        const receiptHtml = `
+            <html>
+                <head>
+                    <title>Ticket - ${businessName || "Zoko"}</title>
+                    <style>
+                        @page { margin: 0; }
+                        body {
+                            margin: 0;
+                            padding: 0;
+                            background: white;
+                            font-family: 'Courier New', Courier, monospace;
+                        }
+                        .ticket {
+                            width: 65mm; /* Even safer width to avoid any clipping */
+                            margin: 0;
+                            padding: 5mm 10mm 5mm 2mm; /* Large right buffer for amounts */
+                            color: black;
+                            font-size: 11px;
+                            line-height: 1.3;
+                            font-weight: 600;
+                            box-sizing: border-box;
+                        }
+                        .header { text-align: center; margin-bottom: 4mm; padding-right: 8mm; }
+                        .header h2 { margin: 0; font-size: 18px; text-transform: uppercase; font-weight: 800; }
+                        .header p { margin: 2px 0; font-size: 11px; font-weight: 600; }
+                        .info { font-size: 11px; margin-bottom: 4mm; border-bottom: 1.5px dashed black; padding-bottom: 2mm; font-weight: 600; padding-right: 8mm; }
+                        .items { width: 100%; }
+                        .item-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+                        .item-name { flex: 1; padding-right: 6px; font-weight: 600; }
+                        .item-qty-price { white-space: nowrap; font-weight: 500; font-size: 11px; }
+                        .item-total { font-weight: 800; font-size: 12px; }
+                        .totals { margin-top: 5mm; border-top: 1.5px dashed black; padding-top: 2mm; }
+                        .total-row { display: flex; justify-content: space-between; font-weight: 900; font-size: 16px; margin-top: 2mm; }
+                        .sub-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 1mm; }
+                        .footer { text-align: center; margin-top: 10mm; font-size: 10px; border-top: 1.5px dashed black; padding-top: 2mm; font-weight: 600; padding-right: 8mm; }
+                    </style>
+                </head>
+                <body>
+                    <div class="ticket">
+                        <div class="header">
+                        <h2>${businessName || "Zoko"}</h2>
+                        <p>Orden #${order?.id || "—"}</p>
+                        <p>${dateStr} ${timeStr}</p>
+                    </div>
+                    <div class="info"><p>Atendido por: ${cashierName || "Admin"}</p></div>
+                    <div class="items">
+                        ${cart.map(item => `
+                            <div class="item-row">
+                                <div class="item-name">${item.name}</div>
+                            </div>
+                            <div class="item-row" style="margin-bottom: 3px;">
+                                <div class="item-qty-price">${item.quantity} x $${item.price.toLocaleString("es-CL")}</div>
+                                <div class="item-total">$${(item.price * item.quantity).toLocaleString("es-CL")}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="totals">
+                        <div class="sub-row">
+                            <span>Subtotal:</span>
+                            <span>$${subtotal.toLocaleString("es-CL")}</span>
+                        </div>
+                        <div class="sub-row">
+                            <span>IVA (19%):</span>
+                            <span>$${ivaAmount.toLocaleString("es-CL")}</span>
+                        </div>
+                        <div class="total-row">
+                            <span>TOTAL:</span>
+                            <span>$${total.toLocaleString("es-CL")}</span>
+                        </div>
+                    </div>
+                    <div class="info" style="border-top: 1px dashed black; border-bottom: none; margin-top: 3mm; padding-top: 2mm;">
+                        <div class="sub-row"><span>M. Pago:</span><span>${method.label}</span></div>
+                        ${paymentMethod === 'cash' ? `
+                            <div class="sub-row"><span>Recibido:</span><span>$${cashReceived.toLocaleString("es-CL")}</span></div>
+                            <div class="sub-row"><span>Vuelto:</span><span>$${change.toLocaleString("es-CL")}</span></div>
+                        ` : ''}
+                    </div>
+                    <div class="footer"><p>¡GRACIAS POR SU COMPRA!</p><p>${businessName || "Zoko"}</p></div>
+                    </div>
+                    <script>
+                        window.onload = function() {
+                            setTimeout(() => {
+                                window.print();
+                                // Esperamos 1.5 segundos extras para asegurar que el sistema reciba el trabajo
+                                setTimeout(() => { window.close(); }, 1500);
+                            }, 500);
+                        };
+                    </script>
+                </body>
+            </html>
+        `;
+        printWindow.document.write(receiptHtml);
+        printWindow.document.close();
+    };
 
     return (
         <>
             {/* Print-specific global styles */}
             <style>{`
-                @media print {
-                    body * {
-                        visibility: hidden;
-                    }
-                    #receipt-print-root, #receipt-print-root * {
-                        visibility: visible;
-                    }
-                    #receipt-print-root {
-                        position: absolute;
-                        left: 0;
-                        top: 0;
-                        width: 100%;
-                        max-width: 100%;
-                        margin: 0;
-                        padding: 0;
-                        box-shadow: none !important;
-                        border-radius: 0 !important;
-                        height: auto !important;
-                        max-height: none !important;
-                        overflow: visible !important;
-                        background: white !important;
-                    }
-                    .receipt-modal-backdrop { 
-                        position: absolute; 
-                        background: white !important; 
-                        backdrop-filter: none !important;
-                    }
-                    .receipt-no-print { display: none !important; }
-                }
                 @keyframes receiptSlideUp {
                     from { opacity: 0; transform: translateY(30px) scale(0.97); }
                     to   { opacity: 1; transform: translateY(0) scale(1); }
@@ -128,8 +195,11 @@ export const ReceiptModal = ({ order, cart, paymentMethod, cashReceived, busines
                         <h2 style={{ margin: 0, fontSize: "1.4rem", fontWeight: 800, letterSpacing: "-0.3px" }}>
                             ¡Pago Exitoso!
                         </h2>
-                        <p style={{ margin: "0.35rem 0 0", opacity: 0.8, fontSize: "0.9rem", fontWeight: 500 }}>
-                            {businessName || "MyMarket"}
+                        <p style={{ margin: "0.5rem 0 0", fontSize: "1.6rem", fontWeight: 950, letterSpacing: "-0.8px" }}>
+                            <span style={{ color: "#fbc531" }}>Z</span>
+                            <span style={{ color: "#eb4d4b" }}>o</span>
+                            <span style={{ color: "#27ae60" }}>k</span>
+                            <span style={{ color: "#00a8ff" }}>o</span>
                         </p>
                     </div>
 
@@ -304,7 +374,7 @@ export const ReceiptModal = ({ order, cart, paymentMethod, cashReceived, busines
                         textAlign: "center", padding: "0 1.75rem 1.5rem",
                         fontSize: "0.78rem", color: "#94a3b8", fontWeight: 500,
                     }}>
-                        ¡Gracias por su compra! · {businessName || "MyMarket"}
+                        ¡Gracias por su compra! · {businessName || "Zoko"}
                     </div>
                 </div>
             </div>
