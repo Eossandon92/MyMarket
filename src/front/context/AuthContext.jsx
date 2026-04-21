@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
+const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
+const API = `${backendUrl}/api`;
 
 const AuthContext = createContext(null);
 

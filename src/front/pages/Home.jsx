@@ -24,7 +24,7 @@ export const Home = () => {
 	const fetchProducts = async () => {
 		try {
 			if (!businessId || !token) return;
-			const backendUrl = import.meta.env.VITE_BACKEND_URL;
+			const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 
 			// Bring both products and promotions
 			const [resProd, resPromo] = await Promise.all([
@@ -130,7 +130,7 @@ export const Home = () => {
 	const handleConfirmCheckout = async (method, cashReceived = 0) => {
 		try {
 			if (!businessId || !token || !user) return;
-			const backendUrl = import.meta.env.VITE_BACKEND_URL;
+			const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 			const orderData = {
 				business_id: businessId,
 				user_id: user.id,
