@@ -10,5 +10,9 @@
       "destination": "/index.html"
     }
   ],
-  "framework": "vite"
+  "functions": {
+    "api/*.py": {
+      "runtime": "vercel-python@0.1.0"
+    }
+  }
 }
