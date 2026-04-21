@@ -1,27 +1,39 @@
 import sys
 import os
+import traceback
 
-# Añadir la carpeta 'src' al path
+# Configuración de rutas
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 src_path = os.path.join(path, 'src')
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
 try:
-    from app import app
-except Exception as e:
-    print(f"Error importando app: {e}")
-    raise e
+    from app import app as flask_app
+except Exception:
+    flask_app = None
+    import_error = traceback.format_exc()
 
-# Middleware para asegurar que Flask reciba el prefijo /api
-# Esto arregla el error de "Unexpected end of JSON input" que suele ser un 404 oculto
-class VercelPathFix(object):
-    def __init__(self, app):
-        self.app = app
-    def __call__(self, environ, start_response):
+def app(environ, start_response):
+    # Endpoint de prueba directa (sin pasar por Flask)
+    if environ.get('PATH_INFO') == '/api/test' or environ.get('PATH_INFO') == '/test':
+        start_response('200 OK', [('Content-Type', 'application/json')])
+        return [b'{"status": "alive", "message": "El puente de Vercel funciona correctamente"}']
+
+    # Si hubo error al importar Flask, lo mostramos en el navegador
+    if flask_app is None:
+        start_response('500 Internal Server Error', [('Content-Type', 'text/plain')])
+        return [f"Error al importar la aplicacion Flask:\n\n{import_error}".encode('utf-8')]
+
+    # Intentar ejecutar Flask con captura de errores
+    try:
+        # Asegurar que el PATH_INFO tenga el prefijo que Flask espera
         path = environ.get('PATH_INFO', '')
         if not path.startswith('/api'):
             environ['PATH_INFO'] = '/api' + path
-        return self.app(environ, start_response)
-
-app.wsgi_app = VercelPathFix(app.wsgi_app)
+            
+        return flask_app(environ, start_response)
+    except Exception:
+        error_msg = traceback.format_exc()
+        start_response('500 Internal Server Error', [('Content-Type', 'text/plain')])
+        return [f"Error durante la ejecucion de Flask:\n\n{error_msg}".encode('utf-8')]
