@@ -15,6 +15,7 @@ export const Home = () => {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [receiptData, setReceiptData] = useState(null);
+	const [isProcessing, setIsProcessing] = useState(false);
 	const [scanToast, setScanToast] = useState(null); // { msg, type: 'success'|'error' }
 
 	// Calculate display categories (including "Todos")
@@ -102,6 +103,7 @@ export const Home = () => {
 	const handleConfirmCheckout = async (method, cashReceived = 0) => {
 		try {
 			if (!businessId || !token || !user) return;
+			setIsProcessing(true);
 			const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 			const orderData = {
 				business_id: businessId,
@@ -138,6 +140,8 @@ export const Home = () => {
 		} catch (error) {
 			console.error("Error checkout:", error);
 			alert("Error de conexión al procesar el pago.");
+		} finally {
+			setIsProcessing(false);
 		}
 	};
 
@@ -455,6 +459,7 @@ export const Home = () => {
 					cart={receiptData.cart}
 					paymentMethod={receiptData.paymentMethod}
 					cashReceived={receiptData.cashReceived}
+					business={user?.business}
 					businessName={businessName}
 					cashierName={user?.name}
 					onClose={() => {
@@ -462,6 +467,27 @@ export const Home = () => {
 						setCart([]);
 					}}
 				/>
+			)}
+
+			{/* Procesando Pago Overlay */}
+			{isProcessing && (
+				<div style={{
+					position: "fixed", inset: 0, zIndex: 20000,
+					background: "rgba(255, 255, 255, 0.9)",
+					backdropFilter: "blur(5px)",
+					display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center"
+				}}>
+					<div className="zoko-loader-wrapper">
+						<div className="zoko-loader-circle"></div>
+						<div className="zoko-loader-circle"></div>
+						<div className="zoko-loader-circle"></div>
+						<div className="zoko-loader-shadow"></div>
+						<div className="zoko-loader-shadow"></div>
+						<div className="zoko-loader-shadow"></div>
+					</div>
+					<h2 style={{ color: "#0f172a", fontWeight: 800, marginTop: "1rem" }}>Procesando Pago...</h2>
+					<p style={{ color: "#64748b", fontWeight: 600 }}>Generando Boleta Electrónica SII</p>
+				</div>
 			)}
 		</div>
 	);

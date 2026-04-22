@@ -7,7 +7,7 @@ const PAYMENT_LABELS = {
     mobile: { label: "Transferencia", icon: <Smartphone size={16} />, color: "#7c3aed", bg: "#ede9fe" },
 };
 
-export const ReceiptModal = ({ order, cart, paymentMethod, cashReceived, businessName, cashierName, onClose }) => {
+export const ReceiptModal = ({ order, cart, paymentMethod, cashReceived, business, businessName, cashierName, onClose }) => {
     const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
     const ivaAmount = Math.round(subtotal * 0.19);
     const total = subtotal;
@@ -18,12 +18,23 @@ export const ReceiptModal = ({ order, cart, paymentMethod, cashReceived, busines
     const dateStr = now.toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
     const timeStr = now.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
 
+    // Official SII Document Logic
+    const isSiiBoleta = !!order?.sii_ted_xml;
+    
     const handlePrint = () => {
-        const printWindow = window.open('', '_blank', 'width=400,height=600');
+        const printWindow = window.open('', '_blank', 'width=400,height=700');
+        
+        // Emisor data from business prop or falls back to system defaults
+        const rutEmisor = business?.rut || "76.123.456-7";
+        const giroEmisor = business?.giro_comercial || "Comercio Minorista";
+        const addressEmisor = business?.address || "Dirección del Negocio";
+        const communeEmisor = "SANTIAGO"; // Could be customized from business details
+
         const receiptHtml = `
             <html>
                 <head>
-                    <title>Ticket - ${businessName || "Zoko"}</title>
+                    <title>Boleta - ${businessName || "Zoko"}</title>
+                    <script src="https://cdn.jsdelivr.net/npm/bwip-js@3.0.4/dist/bwip-js-min.js"></script>
                     <style>
                         @page { margin: 0; }
                         body {
@@ -31,82 +42,145 @@ export const ReceiptModal = ({ order, cart, paymentMethod, cashReceived, busines
                             padding: 0;
                             background: white;
                             font-family: 'Courier New', Courier, monospace;
-                        }
-                        .ticket {
-                            width: 65mm; /* Even safer width to avoid any clipping */
-                            margin: 0;
-                            padding: 5mm 10mm 5mm 2mm; /* Large right buffer for amounts */
                             color: black;
                             font-size: 11px;
-                            line-height: 1.3;
-                            font-weight: 600;
+                            -webkit-print-color-adjust: exact !important;
+                        }
+                        .ticket {
+                            width: 72mm;
+                            margin: 0;
+                            padding: 5mm 5mm 10mm 5mm;
                             box-sizing: border-box;
                         }
-                        .header { text-align: center; margin-bottom: 4mm; padding-right: 8mm; }
-                        .header h2 { margin: 0; font-size: 18px; text-transform: uppercase; font-weight: 800; }
-                        .header p { margin: 2px 0; font-size: 11px; font-weight: 600; }
-                        .info { font-size: 11px; margin-bottom: 4mm; border-bottom: 1.5px dashed black; padding-bottom: 2mm; font-weight: 600; padding-right: 8mm; }
-                        .items { width: 100%; }
+                        .header-legal { text-align: center; margin-bottom: 5mm; border-bottom: 1.5px solid black; padding-bottom: 3mm; }
+                        .header-legal h2 { margin: 0; font-size: 14px; font-weight: 800; text-transform: uppercase; }
+                        .header-legal p { margin: 1px 0; font-size: 10px; font-weight: 600; }
+                        
+                        .sii-box {
+                            border: 2px solid #D32F2F;
+                            color: #D32F2F;
+                            padding: 3mm;
+                            text-align: center;
+                            margin: 4mm auto;
+                            width: 80%;
+                            line-height: 1.2;
+                        }
+                        .sii-box p { margin: 0; font-weight: 800; font-size: 12px; }
+                        .sii-box .folio { font-size: 16px; margin-top: 1mm; }
+
+                        .info { font-size: 11px; margin-bottom: 4mm; border-bottom: 1.5px dashed black; padding-bottom: 2mm; font-weight: 600; }
+                        .items { width: 100%; margin-bottom: 4mm; }
                         .item-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
-                        .item-name { flex: 1; padding-right: 6px; font-weight: 600; }
-                        .item-qty-price { white-space: nowrap; font-weight: 500; font-size: 11px; }
-                        .item-total { font-weight: 800; font-size: 12px; }
-                        .totals { margin-top: 5mm; border-top: 1.5px dashed black; padding-top: 2mm; }
-                        .total-row { display: flex; justify-content: space-between; font-weight: 900; font-size: 16px; margin-top: 2mm; }
-                        .sub-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; margin-bottom: 1mm; }
-                        .footer { text-align: center; margin-top: 10mm; font-size: 10px; border-top: 1.5px dashed black; padding-top: 2mm; font-weight: 600; padding-right: 8mm; }
+                        .item-name { flex: 1; padding-right: 6px; font-weight: 600; font-size: 10px; }
+                        .item-total { font-weight: 700; font-size: 11px; }
+                        
+                        .totals { border-top: 1.5px dashed black; padding-top: 2mm; }
+                        .total-row { display: flex; justify-content: space-between; font-weight: 900; font-size: 15px; margin-top: 2mm; }
+                        .sub-row { display: flex; justify-content: space-between; font-size: 11px; font-weight: 600; margin-bottom: 1mm; }
+                        
+                        .timbre-container { text-align: center; margin-top: 8mm; padding-top: 2mm; }
+                        .timbre-container canvas { max-width: 100%; height: auto; }
+                        .timbre-footer { font-size: 8px; font-weight: 800; text-align: center; margin-top: 1mm; }
+                        
+                        .footer { text-align: center; margin-top: 6mm; font-size: 10px; border-top: 1.5px dashed black; padding-top: 3mm; font-weight: 600; }
+                        
+                        @media print {
+                            .no-print { display: none; }
+                        }
                     </style>
                 </head>
                 <body>
                     <div class="ticket">
-                        <div class="header">
-                        <h2>${businessName || "Zoko"}</h2>
-                        <p>Orden #${order?.id || "—"}</p>
-                        <p>${dateStr} ${timeStr}</p>
-                    </div>
-                    <div class="info"><p>Atendido por: ${cashierName || "Admin"}</p></div>
-                    <div class="items">
-                        ${cart.map(item => `
-                            <div class="item-row">
-                                <div class="item-name">${item.name}</div>
+                        ${isSiiBoleta ? `
+                            <div class="header-legal">
+                                <h2>${businessName || "Zoko"}</h2>
+                                <p>${giroEmisor}</p>
+                                <p>${addressEmisor}, ${communeEmisor}</p>
                             </div>
-                            <div class="item-row" style="margin-bottom: 3px;">
-                                <div class="item-qty-price">${item.quantity} x $${item.price.toLocaleString("es-CL")}</div>
-                                <div class="item-total">$${(item.price * item.quantity).toLocaleString("es-CL")}</div>
+                            <div class="sii-box">
+                                <p>R.U.T.: ${rutEmisor}</p>
+                                <p>BOLETA ELECTRÓNICA</p>
+                                <p class="folio">Nº ${order.sii_folio}</p>
                             </div>
-                        `).join('')}
+                            <div style="text-align: center; margin-bottom: 3mm; font-size: 10px; font-weight: 800;">
+                                S.I.I. - SANTIAGO
+                            </div>
+                        ` : `
+                            <div style="text-align:center; margin-bottom:4mm;">
+                                <h2 style="margin:0; font-size:18px;">${businessName || "Zoko"}</h2>
+                                <p style="margin:2px 0;">ORDEN #${order?.id}</p>
+                            </div>
+                        `}
+
+                        <div class="info">
+                            <p>Fecha: ${dateStr} ${timeStr}</p>
+                            <p>Cajero: ${cashierName || "Admin"}</p>
+                            <p>Receptor: Consumidor Final</p>
+                        </div>
+
+                        <div class="items">
+                            ${cart.map(item => `
+                                <div class="item-row">
+                                    <div class="item-name">${item.name}</div>
+                                    <div class="item-total">$${(item.price * item.quantity).toLocaleString("es-CL")}</div>
+                                </div>
+                                <div class="item-row" style="margin-bottom: 4px; font-size: 9px; color: #333;">
+                                    <div>${item.quantity} x $${item.price.toLocaleString("es-CL")}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+
+                        <div class="totals">
+                            <div class="sub-row"><span>Mnt. Neto:</span><span>$${Math.round(total / 1.19).toLocaleString("es-CL")}</span></div>
+                            <div class="sub-row"><span>I.V.A. 19%:</span><span>$${Math.round((total / 1.19) * 0.19).toLocaleString("es-CL")}</span></div>
+                            <div class="total-row"><span>TOTAL:</span><span>$${total.toLocaleString("es-CL")}</span></div>
+                        </div>
+
+                        <div style="margin-top: 4mm; font-size: 10px;">
+                            <div class="sub-row"><span>Pago:</span><span>${method.label}</span></div>
+                            ${paymentMethod === 'cash' ? `
+                                <div class="sub-row"><span>Recibido:</span><span>$${cashReceived.toLocaleString("es-CL")}</span></div>
+                                <div class="sub-row"><span>Vuelto:</span><span>$${change.toLocaleString("es-CL")}</span></div>
+                            ` : ''}
+                        </div>
+
+                        ${isSiiBoleta ? `
+                            <div class="timbre-container">
+                                <canvas id="pdf417-canvas"></canvas>
+                                <div class="timbre-footer">
+                                    Timbre Electrónico SII<br/>
+                                    Res. 80 de 2014. Verifique documento: www.sii.cl
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <div class="footer">
+                            <p>¡GRACIAS POR SU COMPRA!</p>
+                            <p>Zoko POS</p>
+                        </div>
                     </div>
 
-                    <div class="totals">
-                        <div class="sub-row">
-                            <span>Subtotal:</span>
-                            <span>$${subtotal.toLocaleString("es-CL")}</span>
-                        </div>
-                        <div class="sub-row">
-                            <span>IVA (19%):</span>
-                            <span>$${ivaAmount.toLocaleString("es-CL")}</span>
-                        </div>
-                        <div class="total-row">
-                            <span>TOTAL:</span>
-                            <span>$${total.toLocaleString("es-CL")}</span>
-                        </div>
-                    </div>
-                    <div class="info" style="border-top: 1px dashed black; border-bottom: none; margin-top: 3mm; padding-top: 2mm;">
-                        <div class="sub-row"><span>M. Pago:</span><span>${method.label}</span></div>
-                        ${paymentMethod === 'cash' ? `
-                            <div class="sub-row"><span>Recibido:</span><span>$${cashReceived.toLocaleString("es-CL")}</span></div>
-                            <div class="sub-row"><span>Vuelto:</span><span>$${change.toLocaleString("es-CL")}</span></div>
-                        ` : ''}
-                    </div>
-                    <div class="footer"><p>¡GRACIAS POR SU COMPRA!</p><p>${businessName || "Zoko"}</p></div>
-                    </div>
                     <script>
                         window.onload = function() {
+                            ${isSiiBoleta ? `
+                            // Generar Código PDF417
+                            try {
+                                bwipjs.toCanvas('pdf417-canvas', {
+                                    bcid: 'pdf417',
+                                    text: \`${order.sii_ted_xml.replace(/`/g, '\\`')}\`,
+                                    scale: 1,
+                                    height: 15,
+                                    width: 45
+                                });
+                            } catch (e) {
+                                console.error('Error generando Timbre:', e);
+                            }
+                            ` : ''}
+
                             setTimeout(() => {
                                 window.print();
-                                // Esperamos 1.5 segundos extras para asegurar que el sistema reciba el trabajo
-                                setTimeout(() => { window.close(); }, 1500);
-                            }, 500);
+                                setTimeout(() => { window.close(); }, 1000);
+                            }, 300);
                         };
                     </script>
                 </body>

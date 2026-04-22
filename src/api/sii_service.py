@@ -123,13 +123,30 @@ def emitir_documento_electronico(order, business_details, return_json=False):
             }
 
         api_data = response.json()
+        doc_data = api_data.get("document", {})
         print(f">>> RESPUESTA EXITOSA DE TRIBUTUM: {api_data}")
         
         # 4. Actualizar la orden con los datos de éxito
+        # Mapeo de tipos de documento (BoletaAfecta -> 39, etc.)
+        doc_type_map = {
+            "BoletaAfecta": 39,
+            "BoletaExenta": 41,
+            "FacturaAfecta": 33,
+            "FacturaExenta": 34,
+            "Factura": 33
+        }
+        
+        raw_type = doc_data.get("type") or payload["documentType"]
+        order.sii_document_type = doc_type_map.get(raw_type, 39)
         order.sii_status = "accepted"
-        order.sii_folio = api_data.get("folio")
-        order.sii_document_type = api_data.get("documentType") or payload["documentType"]
-        order.sii_pdf_url = api_data.get("pdf_url") or api_data.get("pdfUrl")
+        order.sii_folio = doc_data.get("folio")
+        
+        # Guardar XML legal y Timbre (TED) para impresión térmica
+        order.sii_signed_xml = doc_data.get("signedXml")
+        order.sii_ted_xml = doc_data.get("tedXml")
+        
+        # Algunos endpoints pueden devolver pdfUrl, lo guardamos si existe
+        order.sii_pdf_url = doc_data.get("pdf_url") or doc_data.get("pdfUrl")
         
         logger.info(f"Documento emitido: Folio {order.sii_folio} para Negocio {business_details.name}")
 
@@ -137,6 +154,7 @@ def emitir_documento_electronico(order, business_details, return_json=False):
             "success": True,
             "folio": order.sii_folio,
             "pdf_url": order.sii_pdf_url,
+            "ted_xml": order.sii_ted_xml,
             "message": "Documento emitido correctamente"
         }
 

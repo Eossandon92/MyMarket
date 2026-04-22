@@ -77,6 +77,7 @@ class User(db.Model):
         return {
             "id": self.id,
             "business_id": self.business_id,
+            "business": self.business.serialize() if self.business else None,
             "business_name": self.business.name if self.business else "",
             "name": self.name,
             "email": self.email,
@@ -157,6 +158,8 @@ class Order(db.Model):
     sii_folio = db.Column(db.Integer, nullable=True)          # Official folio number
     sii_pdf_url = db.Column(String(255), nullable=True)       # URL to the PDF receipt/boleta
     sii_status = db.Column(String(50), nullable=True, default="pending") # pending, accepted, rejected, offline
+    sii_signed_xml = db.Column(db.Text, nullable=True)        # Full signed DTE XML
+    sii_ted_xml = db.Column(db.Text, nullable=True)           # TED (Timbre Electrónico DTE) XML
 
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     items = db.relationship("OrderItem", backref="order", lazy=True)
@@ -173,6 +176,8 @@ class Order(db.Model):
             "sii_folio": self.sii_folio,
             "sii_pdf_url": self.sii_pdf_url,
             "sii_status": self.sii_status,
+            "sii_signed_xml": self.sii_signed_xml,
+            "sii_ted_xml": self.sii_ted_xml,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "items": [item.serialize() for item in self.items]
         }
