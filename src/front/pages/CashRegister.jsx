@@ -205,75 +205,84 @@ export const CashRegister = () => {
     };
 
     return (
-        <div style={{ position: "fixed", inset: 0, overflowY: "auto", padding: "1.5rem", paddingBottom: "5rem", fontFamily: "var(--font-family-base)", background: "#f8fafc", zIndex: 100 }}>
-            <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <div className="maintenance-container" style={{ position: "fixed", inset: 0, overflowY: "auto", fontFamily: "Inter, sans-serif", background: "#f8fafc", zIndex: 100 }}>
+            <header style={{ 
+                background: "white", 
+                borderBottom: "1px solid #e2e8f0", 
+                padding: "0.75rem 2rem", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "1.5rem",
+                position: "sticky",
+                top: 0,
+                zIndex: 50,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+            }}>
+                <Link to="/" style={{ color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "50%", transition: "background 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "#f1f5f9"} onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                    <ArrowLeft size={20} />
+                </Link>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <Calculator size={24} color="var(--color-primary)" />
+                    <h1 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>Cierre de Caja</h1>
+                </div>
+            </header>
 
-                {/* Cabecera y Navegación */}
-                <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", backgroundColor: "white", padding: "1rem 1.5rem", borderRadius: "16px", boxShadow: "0 2px 10px rgba(0,0,0,0.03)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                        <div style={headerIconStyle}>
-                            <Calculator size={24} />
-                        </div>
-                        <div>
-                            <h2 style={{ fontSize: "1.4rem", color: "#0f172a", margin: 0, fontWeight: 700 }}>Cierre de Caja</h2>
-                            <p style={{ color: "#64748b", margin: 0, fontSize: "0.9rem", fontWeight: 500 }}>
-                                Punto de Venta Principal - Turno
-                            </p>
-                        </div>
-                    </div>
+            <div style={{ padding: "2rem", width: "100%", boxSizing: "border-box" }}>
+                <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
 
-                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-                        <Link to="/" style={{
-                            display: "flex", alignItems: "center", gap: "0.5rem",
-                            padding: "0.5rem 1rem", backgroundColor: "#f1f5f9", borderRadius: "10px",
-                            color: "#475569", textDecoration: "none", fontWeight: "600", fontSize: "0.9rem",
-                            transition: "background 0.2s"
-                        }} onMouseOver={e => e.currentTarget.style.backgroundColor = "#e2e8f0"} onMouseOut={e => e.currentTarget.style.backgroundColor = "#f1f5f9"}>
-                            <ArrowLeft size={16} /> Volver
-                        </Link>
+                    {/* Controls Bar (Date & Sync) */}
+                    <div style={{ marginBottom: "2rem", display: "flex", justifyContent: "flex-end", alignItems: "center", gap: "1rem" }}>
                         <input
                             type="date"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
                             style={{
-                                padding: "0.5rem 0.75rem",
-                                borderRadius: "10px",
+                                padding: "0.6rem 1rem",
+                                borderRadius: "12px",
                                 border: "1px solid #e2e8f0",
                                 background: "white",
-                                fontSize: "0.9rem",
+                                fontSize: "0.95rem",
                                 fontWeight: "600",
                                 color: "#334155",
                                 outline: "none",
                                 cursor: "pointer",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.05)"
                             }}
                         />
                         <button
                             onClick={fetchRegisterData}
                             style={{
-                                display: "flex", alignItems: "center", gap: "0.4rem",
-                                padding: "0.5rem 1rem",
+                                display: "flex", alignItems: "center", gap: "0.5rem",
+                                padding: "0.6rem 1.25rem",
                                 backgroundColor: "var(--color-primary)",
                                 border: "none",
-                                borderRadius: "10px",
+                                borderRadius: "12px",
                                 cursor: "pointer",
-                                fontWeight: "600",
+                                fontWeight: "700",
                                 color: "white",
-                                fontSize: "0.9rem",
-                                transition: "all 0.15s",
+                                fontSize: "0.95rem",
+                                transition: "all 0.2s",
+                                boxShadow: "0 4px 6px rgba(46, 204, 113, 0.2)"
                             }}
-                            onMouseOver={e => e.currentTarget.style.opacity = "0.9"}
-                            onMouseOut={e => e.currentTarget.style.opacity = "1"}
+                            onMouseOver={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                            onMouseOut={e => e.currentTarget.style.transform = "translateY(0)"}
                         >
-                            <RefreshCw size={16} className={isLoading ? "spin" : ""} />
-                            Sincronizar
+                            <RefreshCw size={18} className={isLoading ? "spin" : ""} />
+                            Sincronizar Datos
                         </button>
                     </div>
-                </div>
 
                 {isLoading || !summary ? (
-                    <div style={{ textAlign: "center", padding: "4rem 2rem", background: "white", borderRadius: "16px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
-                        <RefreshCw size={32} className="spin" style={{ marginBottom: "1rem", color: "var(--color-primary)" }} />
-                        <h3 style={{ margin: 0, color: "#334155", fontSize: "1.1rem", fontWeight: 600 }}>Calculando totales...</h3>
+                    <div style={{ textAlign: "center", padding: "5rem 2rem", background: "white", borderRadius: "16px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)" }}>
+                        <div className="zoko-loader-wrapper">
+                            <div className="zoko-loader-circle"></div>
+                            <div className="zoko-loader-circle"></div>
+                            <div className="zoko-loader-circle"></div>
+                            <div className="zoko-loader-shadow"></div>
+                            <div className="zoko-loader-shadow"></div>
+                            <div className="zoko-loader-shadow"></div>
+                        </div>
+                        <h3 style={{ marginTop: "1.5rem", color: "#334155", fontSize: "1.1rem", fontWeight: 600 }}>Calculando cierre de caja...</h3>
                     </div>
                 ) : (
                     <>
@@ -458,6 +467,7 @@ export const CashRegister = () => {
                         </div>
                     </>
                 )}
+                </div>
             </div>
         </div>
     );

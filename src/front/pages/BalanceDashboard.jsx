@@ -206,12 +206,16 @@ export const BalanceDashboard = () => {
                 )}
 
                 {loading && (
-                    <div style={{ textAlign: "center", padding: "4rem", color: "#94a3b8" }}>
-                        <RefreshCcw
-                            size={32}
-                            style={{ animation: "spin 1s linear infinite", marginBottom: "1rem" }}
-                        />
-                        <p style={{ margin: 0, fontWeight: 600 }}>Cargando balance...</p>
+                    <div style={{ textAlign: "center", padding: "5rem 2rem", color: "#94a3b8" }}>
+                        <div className="zoko-loader-wrapper">
+                            <div className="zoko-loader-circle"></div>
+                            <div className="zoko-loader-circle"></div>
+                            <div className="zoko-loader-circle"></div>
+                            <div className="zoko-loader-shadow"></div>
+                            <div className="zoko-loader-shadow"></div>
+                            <div className="zoko-loader-shadow"></div>
+                        </div>
+                        <p style={{ marginTop: "1.5rem", fontWeight: 600 }}>Analizando balance financiero...</p>
                     </div>
                 )}
 

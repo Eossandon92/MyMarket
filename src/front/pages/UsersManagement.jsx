@@ -284,12 +284,16 @@ export const UsersManagement = () => {
                     </h2>
 
                     {loading ? (
-                        <div style={{ textAlign: "center", padding: "2rem", color: "#94a3b8" }}>
-                            <div style={{
-                                width: "32px", height: "32px", border: "3px solid #e2e8f0", borderTopColor: "#27ae60",
-                                borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 0.5rem"
-                            }} />
-                            <p style={{ margin: 0, fontWeight: 600 }}>Cargando equipo...</p>
+                        <div style={{ textAlign: "center", padding: "4rem 2rem", color: "#94a3b8" }}>
+                            <div className="zoko-loader-wrapper">
+                                <div className="zoko-loader-circle"></div>
+                                <div className="zoko-loader-circle"></div>
+                                <div className="zoko-loader-circle"></div>
+                                <div className="zoko-loader-shadow"></div>
+                                <div className="zoko-loader-shadow"></div>
+                                <div className="zoko-loader-shadow"></div>
+                            </div>
+                            <p style={{ marginTop: "1.5rem", fontWeight: 600 }}>Cargando a tu equipo estrella...</p>
                         </div>
                     ) : team.length === 0 ? (
                         <p style={{ color: "#94a3b8", fontSize: "0.9rem", textAlign: "center", padding: "2rem 0" }}>No hay personal registrado.</p>

@@ -972,16 +972,29 @@ def scan_invoice():
             ]
             """
             
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=[
-                    prompt,
-                    genai.types.Part.from_bytes(
-                        data=image_bytes,
-                        mime_type=file.mimetype,
+            # Simple retry logic for transient 503 errors
+            import time
+            max_retries = 3
+            response = None
+            for attempt in range(max_retries):
+                try:
+                    response = client.models.generate_content(
+                        model='gemini-flash-latest',
+                        contents=[
+                            prompt,
+                            genai.types.Part.from_bytes(
+                                data=image_bytes,
+                                mime_type=file.mimetype,
+                            )
+                        ]
                     )
-                ]
-            )
+                    break # Success!
+                except Exception as e:
+                    if "503" in str(e) and attempt < max_retries - 1:
+                        print(f"Gemini 503 error, retrying... (Attempt {attempt + 1})")
+                        time.sleep(2 * (attempt + 1)) # Exponential backoff
+                        continue
+                    raise e
             
             text = response.text.strip()
             if text.startswith('```json'):
@@ -1207,9 +1220,14 @@ def upload_inventory_excel():
                         parsed_items.append(item)
                         if len(parsed_items) >= 500: break
                     if len(parsed_items) >= 500: break
+                wb.close()
                 os.unlink(tmp_path)
             except Exception as e:
-                if os.path.exists(tmp_path): os.unlink(tmp_path)
+                try: wb.close()
+                except: pass
+                if os.path.exists(tmp_path):
+                    try: os.unlink(tmp_path)
+                    except: pass
                 raise e
         else:
             return jsonify({"msg": "Formato no soportado"}), 400

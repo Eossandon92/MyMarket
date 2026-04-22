@@ -37,8 +37,8 @@ MIGRATE = Migrate(app, db, compare_type=True)
 db.init_app(app)
 
 # JWT Configuration
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'dev-secret-change-in-production')
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 28800  # 8 hours in seconds
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'default-zoko-security-key-32chars-minimum')
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 2592000  # 30 days in seconds
 JWTManager(app)
 
 # add the admin

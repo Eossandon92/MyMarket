@@ -5,11 +5,11 @@ import { ReceiptModal } from "../components/ReceiptModal";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Scan } from "lucide-react";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { useAuth } from "../context/AuthContext";
+import { useInventory } from "../context/InventoryContext";
 
 export const Home = () => {
 	const { businessId, businessName, token, user } = useAuth();
-	const [products, setProducts] = useState([]);
-	const [categories, setCategories] = useState([]);
+	const { products, isLoading, categories: rawCategories } = useInventory();
 	const [selectedCategory, setSelectedCategory] = useState("Todos");
 	const [cart, setCart] = useState([]);
 	const [searchQuery, setSearchQuery] = useState("");
@@ -17,36 +17,8 @@ export const Home = () => {
 	const [receiptData, setReceiptData] = useState(null);
 	const [scanToast, setScanToast] = useState(null); // { msg, type: 'success'|'error' }
 
-	useEffect(() => {
-		fetchProducts();
-	}, []);
-
-	const fetchProducts = async () => {
-		try {
-			if (!businessId || !token) return;
-			const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
-
-			// Bring both products and promotions
-			const [resProd, resPromo] = await Promise.all([
-				fetch(`${backendUrl}/api/products?business_id=${businessId}`, { headers: { "Authorization": `Bearer ${token}` } }),
-				fetch(`${backendUrl}/api/promotions?business_id=${businessId}`, { headers: { "Authorization": `Bearer ${token}` } })
-			]);
-
-			if (resProd.ok && resPromo.ok) {
-				const productsData = await resProd.json();
-				const promosData = await resPromo.json();
-
-				const fullCatalog = [...promosData, ...productsData];
-				setProducts(fullCatalog);
-
-				// Deduplicate categories, ensuring "Todos" and "Promociones" exist if appropriate
-				const cats = ["Todos", ...new Set(fullCatalog.map(p => p.category).filter(Boolean))];
-				setCategories(cats);
-			}
-		} catch (error) {
-			console.error("Error fetching catalog:", error);
-		}
-	};
+	// Calculate display categories (including "Todos")
+	const categories = ["Todos", ...new Set(products.map(p => p.category).filter(Boolean))];
 
 	// Barcode scanner — sempre activo en el POS
 	const showToast = useCallback((msg, type = "success") => {
@@ -266,67 +238,81 @@ export const Home = () => {
 					flex: 1,
 					alignContent: "start",
 				}}>
-					{currentProducts.length > 0 ? currentProducts.map((product) => (
-						<article
-							key={product.id}
-							onClick={() => handleAddToCart(product)}
-							style={{
-								background: "white",
-								borderRadius: "var(--border-radius-md)",
-								padding: "1rem",
-								cursor: "pointer",
-								border: "2px solid transparent",
-								transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-								display: "flex",
-								flexDirection: "column",
-								boxShadow: "var(--shadow-sm)",
-								minHeight: "255px",
-								height: "100%",
-							}}
-							onMouseOver={(e) => {
-								e.currentTarget.style.borderColor = "var(--color-primary)";
-								e.currentTarget.style.transform = "translateY(-3px)";
-								e.currentTarget.style.boxShadow = "var(--shadow-md)";
-							}}
-							onMouseOut={(e) => {
-								e.currentTarget.style.borderColor = "transparent";
-								e.currentTarget.style.transform = "translateY(0)";
-								e.currentTarget.style.boxShadow = "var(--shadow-sm)";
-							}}
-						>
-							<div style={{
-								height: "110px",
-								background: "#F8FAFC",
-								borderRadius: "var(--border-radius-sm)",
-								display: "flex",
-								alignItems: "center",
-								justifyContent: "center",
-								marginBottom: "0.75rem",
-								overflow: "hidden"
-							}}>
-								<img
-									src={product.image_url || `https://ui-avatars.com/api/?name=${product.name}&background=E8F8F5&color=2ECC71&size=120`}
-									alt={product.name}
-									style={{ width: "100%", height: "100%", objectFit: "contain" }}
-								/>
+					{isLoading ? (
+						<div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "5rem 2rem" }}>
+							<div className="zoko-loader-wrapper">
+								<div className="zoko-loader-circle"></div>
+								<div className="zoko-loader-circle"></div>
+								<div className="zoko-loader-circle"></div>
+								<div className="zoko-loader-shadow"></div>
+								<div className="zoko-loader-shadow"></div>
+								<div className="zoko-loader-shadow"></div>
 							</div>
-							<p style={{ fontSize: "0.9rem", fontWeight: "600", color: "var(--color-text-main)", marginBottom: "0.25rem", lineHeight: "1.3" }}>{product.name}</p>
-							<p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>{product.category}</p>
-							<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
-								<span style={{ fontWeight: "800", fontSize: "1.05rem", color: "var(--color-text-main)" }}>
-									${product.price.toLocaleString("es-CL")}
-								</span>
+							<p style={{ marginTop: "1.5rem", color: "#64748b", fontWeight: "600" }}>Cargando productos...</p>
+						</div>
+					) : currentProducts.length > 0 ? (
+						currentProducts.map((product) => (
+							<article
+								key={product.id}
+								onClick={() => handleAddToCart(product)}
+								style={{
+									background: "white",
+									borderRadius: "var(--border-radius-md)",
+									padding: "1rem",
+									cursor: "pointer",
+									border: "2px solid transparent",
+									transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+									display: "flex",
+									flexDirection: "column",
+									boxShadow: "var(--shadow-sm)",
+									minHeight: "255px",
+									height: "100%",
+								}}
+								onMouseOver={(e) => {
+									e.currentTarget.style.borderColor = "var(--color-primary)";
+									e.currentTarget.style.transform = "translateY(-3px)";
+									e.currentTarget.style.boxShadow = "var(--shadow-md)";
+								}}
+								onMouseOut={(e) => {
+									e.currentTarget.style.borderColor = "transparent";
+									e.currentTarget.style.transform = "translateY(0)";
+									e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+								}}
+							>
 								<div style={{
-									width: "28px", height: "28px", borderRadius: "8px",
-									backgroundColor: "var(--color-primary)", display: "flex",
-									alignItems: "center", justifyContent: "center",
-									boxShadow: "0 2px 8px rgba(46, 204, 113, 0.4)"
+									height: "110px",
+									background: "#F8FAFC",
+									borderRadius: "var(--border-radius-sm)",
+									display: "flex",
+									alignItems: "center",
+									justifyContent: "center",
+									marginBottom: "0.75rem",
+									overflow: "hidden"
 								}}>
-									<Plus size={16} color="white" />
+									<img
+										src={product.image_url || `https://ui-avatars.com/api/?name=${product.name}&background=E8F8F5&color=2ECC71&size=120`}
+										alt={product.name}
+										style={{ width: "100%", height: "100%", objectFit: "contain" }}
+									/>
 								</div>
-							</div>
-						</article>
-					)) : (
+								<p style={{ fontSize: "0.9rem", fontWeight: "600", color: "var(--color-text-main)", marginBottom: "0.25rem", lineHeight: "1.3" }}>{product.name}</p>
+								<p style={{ fontSize: "0.78rem", color: "var(--color-text-muted)", marginBottom: "0.5rem" }}>{product.category}</p>
+								<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto" }}>
+									<span style={{ fontWeight: "800", fontSize: "1.05rem", color: "var(--color-text-main)" }}>
+										${product.price.toLocaleString("es-CL")}
+									</span>
+									<div style={{
+										width: "28px", height: "28px", borderRadius: "8px",
+										backgroundColor: "var(--color-primary)", display: "flex",
+										alignItems: "center", justifyContent: "center",
+										boxShadow: "0 2px 8px rgba(46, 204, 113, 0.4)"
+									}}>
+										<Plus size={16} color="white" />
+									</div>
+								</div>
+							</article>
+						))
+					) : (
 						<div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "4rem", color: "var(--color-text-muted)" }}>
 							<ShoppingCart size={48} style={{ opacity: 0.3, marginBottom: "1rem" }} />
 							<p style={{ fontSize: "1.1rem" }}>No hay productos en esta categoría.</p>

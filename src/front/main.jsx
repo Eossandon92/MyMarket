@@ -5,6 +5,7 @@ import { RouterProvider } from "react-router-dom";  // Import RouterProvider to 
 import { router } from "./routes";  // Import the router configuration
 import { StoreProvider } from './hooks/useGlobalReducer';  // Import the StoreProvider for global state management
 import { AuthProvider } from './context/AuthContext'; // Import AuthProvider
+import { InventoryProvider } from './context/InventoryContext';
 import { BackendURL } from './components/BackendURL';
 
 const Main = () => {
@@ -13,9 +14,10 @@ const Main = () => {
             {/* Provide global state to all components */}
             <StoreProvider>
                 <AuthProvider>
-                    {/* Set up routing for the application */}
-                    <RouterProvider router={router}>
-                    </RouterProvider>
+                    <InventoryProvider>
+                        {/* Set up routing for the application */}
+                        <RouterProvider router={router} />
+                    </InventoryProvider>
                 </AuthProvider>
             </StoreProvider>
         </React.StrictMode>

@@ -2,40 +2,23 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { PlusCircle, Search, Edit2, Trash2, X, Tag, ArrowLeft } from "lucide-react";
 import { useAuth, API } from "../context/AuthContext";
+import { useInventory } from "../context/InventoryContext";
 
 export const CategoryMaintenance = () => {
     const { businessId, token } = useAuth();
-    const [categories, setCategories] = useState([]);
+    const { categories, isLoading, fetchCategories } = useInventory();
     const [searchTerm, setSearchTerm] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState(null);
     const [formData, setFormData] = useState({ name: "" });
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        fetchCategories();
+        // No local fetch needed, handled by Context.
+        // We can manually refresh if needed, but it's done in Provider's useEffect
     }, []);
-
-    const fetchCategories = async () => {
-        try {
-            if (!businessId || !token) return;
-
-            const response = await fetch(`${API}/categories?business_id=${businessId}`, {
-                headers: { "Authorization": `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setCategories(data);
-            } else {
-                console.error("Failed to fetch categories");
-                setError("Error al cargar las categorías.");
-            }
-        } catch (error) {
-            console.error("Error fetching categories:", error);
-            setError("Error de conexión al servidor.");
-        }
-    };
 
     const handleOpenModal = (category = null) => {
         setError(null);
@@ -106,19 +89,23 @@ export const CategoryMaintenance = () => {
 
     const handleDelete = async (id) => {
         if (window.confirm("¿Estás seguro de que deseas eliminar esta categoría?")) {
+            setDeletingId(id);
             try {
                 const response = await fetch(`${API}/categories/${id}`, {
                     method: "DELETE",
                     headers: { "Authorization": `Bearer ${token}` }
                 });
-
                 if (response.ok) {
-                    fetchCategories();
+                    await fetchCategories();
                 } else {
-                    console.error("Failed to delete category");
+                    const data = await response.json();
+                    alert(`Error: ${data.msg || "Error al eliminar la categoría"}`);
                 }
             } catch (error) {
                 console.error("Error deleting category:", error);
+                alert("Error de red al intentar eliminar la categoría.");
+            } finally {
+                setDeletingId(null);
             }
         }
     };
@@ -128,26 +115,37 @@ export const CategoryMaintenance = () => {
     );
 
     return (
-        <div className="maintenance-container" style={{ position: "fixed", inset: 0, overflowY: "auto", padding: "2rem", paddingBottom: "5rem", fontFamily: "var(--font-family-base)", background: "var(--color-bg-main)", zIndex: 100 }}>
+        <div className="maintenance-container" style={{ position: "fixed", inset: 0, overflowY: "auto", fontFamily: "Inter, sans-serif", background: "#f8fafc", zIndex: 100 }}>
 
-            {/* Back Button */}
-            <div style={{ marginBottom: "1.5rem" }}>
-                <Link to="/" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "var(--color-primary)", textDecoration: "none", fontWeight: "600", fontSize: "1.1rem" }}>
+            {/* Top Navigation Bar */}
+            <header style={{ 
+                background: "white", 
+                borderBottom: "1px solid #e2e8f0", 
+                padding: "0.75rem 2rem", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "1.5rem",
+                position: "sticky",
+                top: 0,
+                zIndex: 50,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+            }}>
+                <Link to="/" style={{ color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "50%", transition: "background 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "#f1f5f9"} onMouseOut={e => e.currentTarget.style.background = "transparent"}>
                     <ArrowLeft size={20} />
-                    Volver al POS
                 </Link>
-            </div>
-
-            <div className="maintenance-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
-                <div>
-                    <h2 style={{ fontSize: "2rem", color: "var(--color-text-main)", margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
-                        <Tag size={28} color="var(--color-primary)" />
-                        Mantención de Categorías
-                    </h2>
-                    <p style={{ color: "var(--color-text-muted)", marginTop: "0.5rem", fontSize: "1rem" }}>
-                        Administra las categorías de tus productos
-                    </p>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <Tag size={24} color="var(--color-primary)" />
+                    <h1 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>Mantención de Categorías</h1>
                 </div>
+            </header>
+
+            <div style={{ padding: "2rem", width: "100%", boxSizing: "border-box" }}>
+                <div style={{ maxWidth: "1600px", margin: "0 auto" }}>
+                    <div className="maintenance-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "2rem" }}>
+                        <div>
+                            <h2 style={{ fontSize: "1.8rem", color: "#0f172a", fontWeight: 800, margin: 0 }}>Administrar Categorías</h2>
+                            <p style={{ color: "#64748b", marginTop: "0.25rem", fontSize: "1rem" }}>Crea y gestiona las clasificaciones de tus productos</p>
+                        </div>
                 <button
                     onClick={() => handleOpenModal()}
                     style={{
@@ -194,7 +192,21 @@ export const CategoryMaintenance = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredCategories.length > 0 ? (
+                        {isLoading ? (
+                            <tr>
+                                <td colSpan="3" style={{ padding: "5rem 2rem", textAlign: "center" }}>
+                                    <div className="zoko-loader-wrapper">
+                                        <div className="zoko-loader-circle"></div>
+                                        <div className="zoko-loader-circle"></div>
+                                        <div className="zoko-loader-circle"></div>
+                                        <div className="zoko-loader-shadow"></div>
+                                        <div className="zoko-loader-shadow"></div>
+                                        <div className="zoko-loader-shadow"></div>
+                                    </div>
+                                    <p style={{ marginTop: "1.5rem", color: "#64748b", fontWeight: "600" }}>Cargando categorías...</p>
+                                </td>
+                            </tr>
+                        ) : filteredCategories.length > 0 ? (
                             filteredCategories.map((cat) => (
                                 <tr key={cat.id} style={{ borderBottom: "1px solid #dee2e6" }}>
                                     <td style={{ padding: "1rem", color: "#6c757d" }}>#{cat.id}</td>
@@ -202,17 +214,27 @@ export const CategoryMaintenance = () => {
                                     <td style={{ padding: "1rem", textAlign: "right" }}>
                                         <button
                                             onClick={() => handleOpenModal(cat)}
-                                            style={{ background: "none", border: "none", color: "#0d6efd", cursor: "pointer", padding: "0.5rem", marginRight: "0.5rem" }}
+                                            disabled={deletingId !== null}
+                                            style={{ background: "none", border: "none", color: "#0d6efd", cursor: deletingId ? "not-allowed" : "pointer", padding: "0.5rem", marginRight: "0.5rem", opacity: deletingId ? 0.5 : 1 }}
                                             title="Editar"
                                         >
                                             <Edit2 size={18} />
                                         </button>
                                         <button
                                             onClick={() => handleDelete(cat.id)}
-                                            style={{ background: "none", border: "none", color: "#dc3545", cursor: "pointer", padding: "0.5rem" }}
+                                            disabled={deletingId !== null}
+                                            style={{ background: "none", border: "none", color: "#dc3545", cursor: deletingId ? "not-allowed" : "pointer", padding: "0.5rem", opacity: (deletingId && deletingId !== cat.id) ? 0.5 : 1 }}
                                             title="Eliminar"
                                         >
-                                            <Trash2 size={18} />
+                                            {deletingId === cat.id ? (
+                                                 <div className="zoko-loader-wrapper" style={{ transform: "scale(0.3)", marginBottom: 0, width: "30px", height: "15px", display: "inline-block" }}>
+                                                    <div className="zoko-loader-circle"></div>
+                                                    <div className="zoko-loader-circle"></div>
+                                                    <div className="zoko-loader-circle"></div>
+                                                 </div>
+                                            ) : (
+                                                <Trash2 size={18} />
+                                            )}
                                         </button>
                                     </td>
                                 </tr>
@@ -289,6 +311,8 @@ export const CategoryMaintenance = () => {
                     </div>
                 </div>
             )}
+                </div>
+            </div>
         </div>
     );
 };

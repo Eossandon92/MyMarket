@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
-import { PackageOpen, Search, CheckCircle, AlertCircle, RefreshCw, Hand, ArrowRight, Camera, Save, Trash2, ChevronLeft, Download } from "lucide-react";
+import { PackageOpen, Search, CheckCircle, AlertCircle, RefreshCw, Hand, ArrowRight, Camera, Save, Trash2, ChevronLeft, Download, ArrowLeft } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 export const AddStock = () => {
@@ -23,18 +23,9 @@ export const AddStock = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState("");
 
-    // AI Excel upload states
-    const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
-    const [aiPreviewItems, setAiPreviewItems] = useState(null);
-    const [isProcessingExcel, setIsProcessingExcel] = useState(false);
-    const [excelMeta, setExcelMeta] = useState(null);
-    const [excelError, setExcelError] = useState("");
-    const [excelSuccess, setExcelSuccess] = useState("");
-
     const qtyInputRef = useRef(null);
     const manualInputRef = useRef(null);
     const fileInputRef = useRef(null);
-    const excelFileInputRef = useRef(null);
 
     useEffect(() => {
         // Cargar todos los productos una vez para el mapeo manual
@@ -63,8 +54,6 @@ export const AddStock = () => {
         setErrorMsg("");
         setSuccessMsg("");
         setInvoiceItems(null);
-        setAiPreviewItems(null);
-        setIsExcelModalOpen(false);
         if (manualInputRef.current) {
             manualInputRef.current.focus();
         }
@@ -155,7 +144,7 @@ export const AddStock = () => {
         if (!file) return;
 
         setIsUploading(true);
-        setUploadProgress("La IA de Gemini está leyendo la factura...");
+        setUploadProgress("Procesando factura...");
         setErrorMsg("");
         setSuccessMsg("");
         setInvoiceItems(null);
@@ -242,88 +231,32 @@ export const AddStock = () => {
         }
     };
 
-    // --- AI Excel Functions ---
-    const handleExcelUpload = async (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setIsProcessingExcel(true);
-        setExcelError("");
-        setExcelSuccess("");
-        setAiPreviewItems(null);
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        try {
-            const backendUrl = import.meta.env.VITE_BACKEND_URL;
-            const res = await fetch(`${backendUrl}/api/inventory/upload`, {
-                method: "POST",
-                headers: { "Authorization": `Bearer ${token}` },
-                body: formData
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setAiPreviewItems(data.items);
-                setExcelMeta({ sheet_info: data.sheet_info, columns_detected: data.columns_detected });
-            } else {
-                const err = await res.json();
-                setExcelError(err.msg || "Error al procesar el Excel con IA.");
-            }
-        } catch (err) {
-            console.error(err);
-            setExcelError("Error de conexión al procesar el Excel.");
-        } finally {
-            setIsProcessingExcel(false);
-            if (excelFileInputRef.current) excelFileInputRef.current.value = "";
-        }
-    };
-
-    const removePreviewItem = (index) => {
-        const newItems = [...aiPreviewItems];
-        newItems.splice(index, 1);
-        setAiPreviewItems(newItems);
-    };
-    const confirmAIExcelImport = async () => {
-        if (!aiPreviewItems || aiPreviewItems.length === 0) return;
-
-        setIsProcessingExcel(true);
-        setExcelError("");
-        setExcelSuccess("");
-
-        try {
-            const backendUrl = import.meta.env.VITE_BACKEND_URL;
-            const res = await fetch(`${backendUrl}/api/inventory/confirm`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-                body: JSON.stringify({ items: aiPreviewItems })
-            });
-
-            if (res.ok) {
-                setExcelSuccess(`¡✅ Se ingresaron ${aiPreviewItems.length} productos con éxito!`);
-                setTimeout(() => {
-                    resetState();
-                    fetchProducts(); // refresh cache
-                }, 2500);
-            } else {
-                const err = await res.json();
-                setExcelError(err.msg || "Error al confirmar la importación.");
-            }
-        } catch (error) {
-            console.error(error);
-            setExcelError("Error de conexión al guardar los productos.");
-        } finally {
-            setIsProcessingExcel(false);
-        }
-    };
-
 
     return (
-        <div style={{ padding: "2rem", maxWidth: "900px", margin: "0 auto", fontFamily: "Inter, sans-serif" }}>
+        <div className="maintenance-container" style={{ position: "fixed", inset: 0, overflowY: "auto", fontFamily: "Inter, sans-serif", background: "#f8fafc", zIndex: 100 }}>
+            <header style={{ 
+                background: "white", 
+                borderBottom: "1px solid #e2e8f0", 
+                padding: "0.75rem 2rem", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "1.5rem",
+                position: "sticky",
+                top: 0,
+                zIndex: 50,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+            }}>
+                <Link to="/" style={{ color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", width: "32px", height: "32px", borderRadius: "50%", transition: "background 0.2s" }} onMouseOver={e => e.currentTarget.style.background = "#f1f5f9"} onMouseOut={e => e.currentTarget.style.background = "transparent"}>
+                    <ArrowLeft size={20} />
+                </Link>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                    <PackageOpen size={24} color="var(--color-primary)" />
+                    <h1 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700, color: "#0f172a" }}>Ingreso de Mercadería</h1>
+                </div>
+            </header>
+
+            <div style={{ padding: "2rem", width: "100%", boxSizing: "border-box" }}>
+                <div style={{ maxWidth: "900px", margin: "0 auto" }}>
 
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "2rem", gap: "1rem", flexWrap: "wrap" }}>
@@ -332,18 +265,8 @@ export const AddStock = () => {
                         <PackageOpen size={32} color="var(--color-primary)" />
                         Ingreso de Mercadería
                     </h1>
-                    <p style={{ color: "#64748b", margin: 0, fontSize: "1rem" }}>Ingresa stock escaneando, con facturas o mediante Inteligencia Artificial.</p>
+                    <p style={{ color: "#64748b", margin: 0, fontSize: "1rem" }}>Carga stock a tus <b>productos ya existentes</b> escaneando códigos o subiendo fotos de facturas.</p>
                 </div>
-                <button
-                    onClick={() => navigate("/products/new")}
-                    style={{
-                        background: "white", color: "var(--color-primary)", border: "2px solid var(--color-primary)",
-                        padding: "0.75rem 1.5rem", borderRadius: "100px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.05)"
-                    }}
-                >
-                    + Nuevo Producto Manual
-                </button>
             </div>
 
             {/* Actions Bar */}
@@ -366,41 +289,7 @@ export const AddStock = () => {
                     }}
                 >
                     {isUploading ? <RefreshCw className="spin" size={20} /> : <Camera size={20} />}
-                    {isUploading ? uploadProgress : "Tomar Foto de Factura (IA)"}
-                </button>
-
-                <input
-                    type="file"
-                    accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-                    ref={excelFileInputRef}
-                    onChange={handleExcelUpload}
-                    style={{ display: 'none' }}
-                />
-                <a
-                    href="/Plantilla_Inventario_Zoko.xlsx"
-                    download="Plantilla_Inventario_Zoko.xlsx"
-                    style={{
-                        background: "white", color: "var(--color-primary)", border: "2px solid var(--color-primary)", padding: "1rem 1.5rem", borderRadius: "12px",
-                        fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, justifyContent: "center",
-                        textDecoration: "none", boxShadow: "0 4px 6px rgba(0,0,0,0.05)"
-                    }}
-                >
-                    <Download size={20} /> Descargar Plantilla
-                </a>
-                <button
-                    onClick={() => {
-                        setIsExcelModalOpen(true);
-                        setAiPreviewItems(null);
-                        setExcelError("");
-                        setExcelSuccess("");
-                    }}
-                    style={{
-                        background: "var(--color-primary)", color: "white", border: "none", padding: "1rem 1.5rem", borderRadius: "12px",
-                        fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "0.75rem", flex: 1, justifyContent: "center",
-                        boxShadow: "0 4px 10px rgba(34, 197, 94, 0.3)"
-                    }}
-                >
-                    🪄 Importar Excel Inicial (IA)
+                    {isUploading ? uploadProgress : "Tomar Foto de Factura"}
                 </button>
             </div>
             {errorMsg && (
@@ -417,9 +306,16 @@ export const AddStock = () => {
 
             {isUploading && (
                 <div style={{ textAlign: "center", padding: "4rem 2rem", background: "white", borderRadius: "20px", border: "1px solid #f1f5f9" }}>
-                    <RefreshCw size={48} color="var(--color-primary)" className="spin" style={{ marginBottom: "1rem" }} />
+                    <div className="zoko-loader-wrapper">
+                        <div className="zoko-loader-circle"></div>
+                        <div className="zoko-loader-circle"></div>
+                        <div className="zoko-loader-circle"></div>
+                        <div className="zoko-loader-shadow"></div>
+                        <div className="zoko-loader-shadow"></div>
+                        <div className="zoko-loader-shadow"></div>
+                    </div>
                     <h2 style={{ margin: 0, color: "#1e293b" }}>{uploadProgress}</h2>
-                    <p style={{ color: "#64748b" }}>Gemini está detectando los productos de tu imagen...</p>
+                    <p style={{ color: "#64748b" }}>Zoko está detectando los productos de tu imagen...</p>
                 </div>
             )}
 
@@ -599,132 +495,11 @@ export const AddStock = () => {
                 </div>
             )}
 
-            {/* AI Excel Upload Modal */}
-            {isExcelModalOpen && (
-                <div style={{
-                    position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.6)", backdropFilter: "blur(4px)",
-                    display: "flex", justifyContent: "center", alignItems: "center", zIndex: 100, padding: "2rem"
-                }}>
-                    <div style={{
-                        background: "white", width: "100%", maxWidth: "800px", maxHeight: "90vh", borderRadius: "24px", padding: "2.5rem",
-                        boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", position: "relative", display: "flex", flexDirection: "column"
-                    }}>
-                        <button onClick={() => { setIsExcelModalOpen(false); setAiPreviewItems(null); }} style={{
-                            position: "absolute", top: "1.5rem", right: "1.5rem", background: "#f1f5f9", border: "none",
-                            width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                            cursor: "pointer", color: "#64748b"
-                        }}>✕</button>
-
-                        <h2 style={{ margin: "0 0 0.5rem", fontSize: "1.5rem", fontWeight: 800, color: "#0f172a" }}>Importación Inicial con IA</h2>
-
-                        {!aiPreviewItems ? (
-                            <>
-                                <p style={{ color: "#64748b", fontSize: "0.95rem", marginBottom: "2rem" }}>
-                                    Sube tu Excel o CSV antiguo. Nuestra Inteligencia Artificial leerá la tabla, deducirá cuáles son los códigos, nombres y precios, y creará las categorías automáticamente.
-                                </p>
-
-                                {excelError && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "1rem", borderRadius: "8px", marginBottom: "1.5rem", fontWeight: 600 }}>{excelError}</div>}
-
-                                <div
-                                    onClick={() => excelFileInputRef.current?.click()}
-                                    style={{
-                                        border: "2px dashed #cbd5e1", borderRadius: "16px", padding: "4rem 2rem", textAlign: "center", cursor: "pointer",
-                                        background: "#f8fafc", transition: "all 0.2s"
-                                    }}
-                                >
-                                    {isProcessingExcel ? (
-                                        <>
-                                            <RefreshCw size={48} color="var(--color-primary)" className="spin" style={{ margin: "0 auto 1rem" }} />
-                                            <h3 style={{ margin: 0, color: "#0f172a" }}>Analizando Documento...</h3>
-                                            <p style={{ margin: "0.5rem 0 0", color: "#64748b" }}>Gemini está leyendo tu inventario. Esto tomará unos segundos.</p>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <PackageOpen size={48} color="#94a3b8" style={{ margin: "0 auto 1rem" }} />
-                                            <h3 style={{ margin: 0, color: "#0f172a", fontSize: "1.2rem" }}>Haz clic para subir archivo</h3>
-                                            <p style={{ margin: "0.5rem 0 0", color: "#64748b" }}>Soporta .xlsx, .xls y .csv (Máx 150 filas por carga inicial)</p>
-                                        </>
-                                    )}
-                                </div>
-                            </>
-                        ) : (
-                            <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
-                                <p style={{ color: "#0f172a", fontSize: "0.95rem", marginBottom: "0.5rem", fontWeight: 600 }}>
-                                    ¡Listo! Se detectaron <strong style={{ color: "var(--color-primary)" }}>{aiPreviewItems.length}</strong> productos. Revisa que estén correctos antes de guardarlos.
-                                </p>
-                                {excelMeta && excelMeta.columns_detected && (
-                                    <p style={{ color: "#64748b", fontSize: "0.78rem", marginBottom: "1rem", background: "#f8fafc", padding: "0.5rem 0.75rem", borderRadius: "8px", lineHeight: 1.6 }}>
-                                        <strong>Columnas detectadas:</strong> {Object.entries(excelMeta.columns_detected).map(([k, v]) => `${k}: "${v}"`).join(" · ")}
-                                        {excelMeta.sheet_info && <><br /><strong>Hojas leídas:</strong> {excelMeta.sheet_info.map(s => `${s.name} (${s.rows} filas)`).join(", ")}</>}
-                                    </p>
-                                )}
-
-                                {excelError && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.9rem", fontWeight: 600 }}>{excelError}</div>}
-                                {excelSuccess && <div style={{ background: "#f0fdf4", color: "#16a34a", padding: "0.75rem", borderRadius: "8px", marginBottom: "1rem", fontSize: "0.9rem", fontWeight: 700, display: "flex", gap: "0.5rem" }}><CheckCircle size={18} /> {excelSuccess}</div>}
-
-                                <div style={{ overflowY: "auto", flex: 1, border: "1px solid #e2e8f0", borderRadius: "12px" }}>
-                                    <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
-                                        <thead style={{ background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }}>
-                                            <tr>
-                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Producto</th>
-                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Cód. Barras</th>
-                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Categoría</th>
-                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>P. Venta</th>
-                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}>Stock</th>
-                                                <th style={{ padding: "0.75rem 1rem", borderBottom: "1px solid #e2e8f0", color: "#64748b" }}></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {aiPreviewItems.map((item, idx) => (
-                                                <tr key={idx} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                                                    <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "#0f172a" }}>{item.name}</td>
-                                                    <td style={{ padding: "0.75rem 1rem", fontSize: "0.8rem", color: item.barcode ? "#0f172a" : "#cbd5e1", fontFamily: "monospace" }}>{item.barcode || "—"}</td>
-                                                    <td style={{ padding: "0.75rem 1rem" }}>
-                                                        <span style={{ background: "#e0f2fe", color: "#0284c7", padding: "0.2rem 0.5rem", borderRadius: "6px", fontSize: "0.8rem", fontWeight: 600 }}>{item.category_name}</span>
-                                                    </td>
-                                                    <td style={{ padding: "0.75rem 1rem", color: "#16a34a", fontWeight: 600 }}>${item.price}</td>
-                                                    <td style={{ padding: "0.75rem 1rem", fontWeight: 600 }}>{item.stock}</td>
-                                                    <td style={{ padding: "0.75rem 1rem", textAlign: "right" }}>
-                                                        <button onClick={() => removePreviewItem(idx)} style={{ background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", padding: "0.25rem" }} title="Descartar este item">
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {aiPreviewItems.length === 0 && (
-                                                <tr>
-                                                    <td colSpan="6" style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>No hay productos en la lista.</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div style={{ marginTop: "1.5rem", display: "flex", justifyContent: "flex-end", gap: "1rem" }}>
-                                    <button
-                                        onClick={() => setAiPreviewItems(null)}
-                                        style={{ background: "#f1f5f9", color: "#64748b", border: "none", padding: "0.75rem 1.5rem", borderRadius: "12px", fontWeight: 600, cursor: "pointer" }}
-                                    >
-                                        Subir otro archivo
-                                    </button>
-                                    <button
-                                        onClick={confirmAIExcelImport}
-                                        disabled={isProcessingExcel || aiPreviewItems.length === 0 || excelSuccess}
-                                        style={{ background: excelSuccess ? "#16a34a" : "var(--color-primary)", color: "white", border: "none", padding: "0.75rem 1.5rem", borderRadius: "12px", fontWeight: 700, cursor: (isProcessingExcel || aiPreviewItems.length === 0 || excelSuccess) ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}
-                                    >
-                                        {isProcessingExcel ? <RefreshCw className="spin" size={18} /> : (excelSuccess ? <CheckCircle size={18} /> : <Save size={18} />)}
-                                        {isProcessingExcel ? "Guardando..." : (excelSuccess ? "Completado" : "Confirmar e Insertar")}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
-
             <style>{`
                 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
             `}</style>
+                </div>
+            </div>
         </div>
     );
 };
