@@ -100,6 +100,7 @@ export const Login = () => {
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="tu@correo.com"
                                 style={inputStyle}
+                                autoComplete="email"
                                 onFocus={(e) => { e.target.style.borderColor = "#27ae60"; e.target.style.boxShadow = "0 0 0 3px rgba(39,174,96,0.1)"; }}
                                 onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
                             />
@@ -118,6 +119,7 @@ export const Login = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
                                 style={inputStyle}
+                                autoComplete="current-password"
                                 onFocus={(e) => { e.target.style.borderColor = "#27ae60"; e.target.style.boxShadow = "0 0 0 3px rgba(39,174,96,0.1)"; }}
                                 onBlur={(e) => { e.target.style.borderColor = "#e2e8f0"; e.target.style.boxShadow = "none"; }}
                             />
