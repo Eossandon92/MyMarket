@@ -17,6 +17,9 @@ from api.commands import setup_commands
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
 static_file_dir = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), '../dist/')
+uploads_file_dir = os.path.join(os.path.dirname(
+    os.path.realpath(__file__)), 'uploads')
+os.makedirs(uploads_file_dir, exist_ok=True)
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
@@ -65,6 +68,10 @@ def sitemap():
     if ENV == "development":
         return generate_sitemap(app)
     return send_from_directory(static_file_dir, 'index.html')
+
+@app.route('/uploads/<path:filename>')
+def serve_uploads(filename):
+    return send_from_directory(uploads_file_dir, filename)
 
 # any other endpoint will try to serve it like a static file
 @app.route('/<path:path>', methods=['GET'])

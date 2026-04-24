@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { LayoutDashboard, ShoppingBag, Coffee, Apple, Settings, User, Tag, BarChart2, Calculator, Users, DollarSign } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { NotificationBell } from "./NotificationBell";
 import { PlusCircle, LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { BusinessProfileModal } from "./BusinessProfileModal";
 
 export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [userMenuOpen, setUserMenuOpen] = useState(false);
+    const [profileModalOpen, setProfileModalOpen] = useState(false);
     const userMenuRef = useRef(null);
 
     // Close user menu on outside click
@@ -33,21 +34,29 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
 
     return (
         <aside className="pos-sidebar">
-            <div className="sidebar-logo" style={{ padding: '1.5rem 1.25rem', gap: '1rem' }}>
-                <div className="sidebar-logo-icon" style={{ width: '40px', height: '40px' }}>
-                    <ShoppingBag size={24} />
-                </div>
-                <h2 style={{ fontSize: "1.9rem", fontWeight: 950, margin: 0, letterSpacing: "-1.2px" }}>
-                    <span style={{ color: "#fbc531" }}>Z</span>
-                    <span style={{ color: "#eb4d4b" }}>o</span>
-                    <span style={{ color: "#27ae60" }}>k</span>
-                    <span style={{ color: "#00a8ff" }}>o</span>
-                </h2>
+            <div className="sidebar-logo" style={{ padding: '0.5rem 1.25rem', paddingBottom: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {user?.business?.logo_url ? (
+                    <div style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                        <img src={user.business.logo_url} alt={user.business.name} style={{ maxHeight: "200px", maxWidth: "100%", width: "auto", height: "auto", objectFit: "contain" }} />
+                    </div>
+                ) : (
+                    <>
+                        <div className="sidebar-logo-icon" style={{ width: '40px', height: '40px' }}>
+                            <ShoppingBag size={24} />
+                        </div>
+                        <h2 style={{ fontSize: "1.9rem", fontWeight: 950, margin: 0, letterSpacing: "-1.2px" }}>
+                            <span style={{ color: "#fbc531" }}>Z</span>
+                            <span style={{ color: "#eb4d4b" }}>o</span>
+                            <span style={{ color: "#27ae60" }}>k</span>
+                            <span style={{ color: "#00a8ff" }}>o</span>
+                        </h2>
+                    </>
+                )}
             </div>
 
 
 
-            <div className="nav-section-title">{user?.role === 'admin' ? 'Administración' : 'Operaciones'}</div>
+            <div className="nav-section-title" style={{ marginTop: 0, paddingTop: "0.25rem" }}>{user?.role === 'admin' ? 'Administración' : 'Operaciones'}</div>
             <nav className="sidebar-nav" style={{ flex: 1, paddingBottom: '1rem' }}>
                 {user?.role === 'admin' && (
                     <>
@@ -103,11 +112,7 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
                 </Link>
             </nav>
 
-            <div className="sidebar-footer">
-                <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <NotificationBell />
-                </div>
-
+            <div className="sidebar-footer" style={{ padding: "0.75rem 1.5rem 1.5rem 1.5rem" }}>
                 <div style={{ position: "relative" }} ref={userMenuRef}>
                     <div
                         className="user-profile"
@@ -142,7 +147,7 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
                         }}>
                             <button
                                 onClick={() => {
-                                    alert("Perfil: En construcción");
+                                    setProfileModalOpen(true);
                                     setUserMenuOpen(false);
                                 }}
                                 style={{
@@ -177,6 +182,10 @@ export const Sidebar = ({ categories, selectedCategory, onSelectCategory }) => {
                     )}
                 </div>
             </div>
+
+            {profileModalOpen && (
+                <BusinessProfileModal onClose={() => setProfileModalOpen(false)} />
+            )}
         </aside>
     );
 };

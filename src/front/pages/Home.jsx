@@ -6,6 +6,7 @@ import { Search, Plus, Minus, Trash2, ShoppingCart, CreditCard, Scan } from "luc
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner";
 import { useAuth } from "../context/AuthContext";
 import { useInventory } from "../context/InventoryContext";
+import { NotificationBell } from "../components/NotificationBell";
 
 export const Home = () => {
 	const { businessId, businessName, token, user } = useAuth();
@@ -201,7 +202,8 @@ export const Home = () => {
 					}}>
 						<span style={{ fontWeight: 700, color: "var(--color-text-main)" }}>{businessName} POS</span>
 						<span>·</span>
-						<span>Cajero: {user?.name || 'Admin'}</span>
+						<span style={{ marginRight: "0.5rem" }}>Cajero: {user?.name || 'Admin'}</span>
+						<NotificationBell />
 					</div>
 				</div>
 

@@ -46,13 +46,19 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const updateSessionUser = (updatedUser) => {
+        const newUser = { ...user, ...updatedUser };
+        localStorage.setItem("zoko_user", JSON.stringify(newUser));
+        setUser(newUser);
+    };
+
     // Convenience: the active business_id
     const businessId = user?.business_id ?? null;
     const businessName = user?.business_name ?? "Sistema POS";
     const isSuperAdmin = user?.role === "superadmin";
 
     return (
-        <AuthContext.Provider value={{ user, token, businessId, businessName, isSuperAdmin, login, logout, loading, isAuthenticated: !!token }}>
+        <AuthContext.Provider value={{ user, token, businessId, businessName, isSuperAdmin, login, logout, updateSessionUser, loading, isAuthenticated: !!token }}>
             {children}
         </AuthContext.Provider>
     );

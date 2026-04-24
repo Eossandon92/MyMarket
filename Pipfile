@@ -9,7 +9,6 @@ verify_ssl = true
 flask = "*"
 psycopg2-binary = "*"
 gunicorn = "*"
-cloudinary = "*"
 flask-admin = "==2.0.0"
 typing-extensions = "*"
 wtforms = "==3.1.2"
@@ -32,6 +31,7 @@ thefuzz = "*"
 pandas = "*"
 beautifulsoup4 = "*"
 flask-swagger = "*"
+cloudinary = "*"
 
 [requires]
 python_version = "3.13"

@@ -75,25 +75,22 @@ export const NotificationBell = () => {
     };
 
     return (
-        <div ref={ref} style={{ position: "relative" }}>
-            {/* ── Botón campana ── */}
+        <div ref={ref} style={{ position: "relative", display: "flex", alignItems: "center" }}>
+            {/* ── Botón campana en linea ── */}
             <button
                 onClick={() => setOpen(o => !o)}
                 title="Alertas de stock"
                 style={{
-                    position: "relative",
-                    background: count > 0 ? "#fff7ed" : "transparent",
-                    border: count > 0 ? "1px solid #fed7aa" : "1px solid transparent",
-                    borderRadius: "12px",
-                    padding: "0.6rem 0.75rem",
+                    background: count > 0 ? "#fef2f2" : "#f8fafc",
+                    border: "none",
+                    borderRadius: "10px",
+                    width: "36px",
+                    height: "36px",
                     cursor: "pointer",
                     display: "flex",
                     alignItems: "center",
-                    gap: "0.5rem",
-                    width: "100%",
-                    color: count > 0 ? "#c2410c" : "var(--color-text-muted)",
-                    fontWeight: 600,
-                    fontSize: "0.9rem",
+                    justifyContent: "center",
+                    color: count > 0 ? "#ef4444" : "#94a3b8",
                     transition: "all 0.2s",
                 }}
             >
@@ -108,21 +105,21 @@ export const NotificationBell = () => {
                             borderRadius: "50%",
                             width: "16px", height: "16px",
                             fontSize: "0.65rem",
-                            fontWeight: 800,
+                            fontWeight: 900,
                             display: "flex", alignItems: "center", justifyContent: "center",
                         }}>{count > 9 ? "9+" : count}</span>
                     )}
                 </div>
-                <span>Alertas{count > 0 ? ` (${count})` : ""}</span>
             </button>
 
             {/* ── Panel desplegable ── */}
             {open && (
                 <div style={{
-                    position: "fixed",
-                    left: "220px",
-                    bottom: "80px",
+                    position: "absolute",
+                    right: "0",
+                    top: "45px",
                     width: "320px",
+                    maxWidth: "90vw",
                     background: "white",
                     borderRadius: "16px",
                     boxShadow: "0 20px 60px rgba(0,0,0,0.18)",

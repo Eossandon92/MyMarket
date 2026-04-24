@@ -24,6 +24,7 @@ class Business(db.Model):
     billing_api_key = db.Column(db.String(500), nullable=True) 
     billing_branch_name = db.Column(db.String(120), nullable=True)
     billing_pos_name = db.Column(db.String(120), nullable=True)
+    logo_url = db.Column(db.String(255), nullable=True)
 
     created_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now())
 
@@ -51,6 +52,7 @@ class Business(db.Model):
             # We DON'T serialize the API key for security unless specifically requested, 
             # or we serialize it as a flag.
             "has_billing_key": True if self.billing_api_key else False,
+            "logo_url": self.logo_url,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 

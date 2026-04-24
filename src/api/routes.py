@@ -19,6 +19,33 @@ import openpyxl
 
 api = Blueprint('api', __name__)
 
+def delete_cloudinary_image(url):
+    if not url or "cloudinary.com" not in url:
+        return
+    try:
+        import cloudinary
+        import cloudinary.uploader
+        import urllib.parse
+        
+        cloudinary.config(
+            cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', os.getenv('CLOUDINARY_API_NAME', '')),
+            api_key=os.getenv('CLOUDINARY_API_KEY'),
+            api_secret=os.getenv('CLOUDINARY_API_SECRET'),
+            secure=True
+        )
+        
+        path = urllib.parse.urlparse(url).path
+        if "upload/" in path:
+            after_upload = path.split("upload/")[1]
+            parts = after_upload.strip("/").split("/")
+            if parts[0].startswith("v") and parts[0][1:].isdigit():
+                parts = parts[1:]
+            pub_id_ext = "/".join(parts)
+            public_id = pub_id_ext.rsplit(".", 1)[0]
+            cloudinary.uploader.destroy(public_id)
+    except Exception as e:
+        print(f"Error deleting old logo from Cloudinary: {e}")
+
 # Allow CORS requests to this API
 CORS(api)
 
@@ -130,9 +157,79 @@ def update_business(id):
         business.billing_branch_name = data['billing_branch_name'].strip() if data['billing_branch_name'] else None
     if 'billing_pos_name' in data:
         business.billing_pos_name = data['billing_pos_name'].strip() if data['billing_pos_name'] else None
+    if 'logo_url' in data:
+        business.logo_url = data['logo_url'].strip() if data['logo_url'] else None
 
     db.session.commit()
     return jsonify(business.serialize()), 200
+
+@api.route('/business/<int:id>/upload-logo', methods=['POST'])
+@jwt_required()
+def upload_business_logo(id):
+    claims = get_jwt()
+    if claims.get('role') not in ['admin', 'superadmin']:
+        return jsonify({"msg": "Unauthorized. Only admins can upload logos."}), 403
+        
+    if claims.get('role') == 'admin' and claims.get('business_id') != id:
+        return jsonify({"msg": "Unauthorized for this business."}), 403
+
+    business = Business.query.get(id)
+    if not business:
+        return jsonify({"msg": "Business not found"}), 404
+
+    if 'file' not in request.files:
+        return jsonify({"msg": "No file part"}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"msg": "No selected file"}), 400
+        
+    if file:
+        import cloudinary
+        import cloudinary.uploader
+        import cloudinary.api
+        
+        cloudinary.config(
+            cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', os.getenv('CLOUDINARY_API_NAME', '')),
+            api_key=os.getenv('CLOUDINARY_API_KEY'),
+            api_secret=os.getenv('CLOUDINARY_API_SECRET'),
+            secure=True
+        )
+        
+        try:
+            upload_result = cloudinary.uploader.upload(file)
+            file_url = upload_result.get('secure_url')
+            
+            if business.logo_url:
+                delete_cloudinary_image(business.logo_url)
+                
+            business.logo_url = file_url
+            db.session.commit()
+            return jsonify({"msg": "Logo Subido Correctamente", "logo_url": file_url}), 200
+        except Exception as e:
+            print("Cloudinary Error:", e)
+            return jsonify({"msg": "Error subiendo imagen a Cloudinary"}), 500
+
+@api.route('/business/<int:id>/logo', methods=['DELETE'])
+@jwt_required()
+def delete_business_logo(id):
+    claims = get_jwt()
+    if claims.get('role') not in ['admin', 'superadmin']:
+        return jsonify({"msg": "Unauthorized."}), 403
+        
+    if claims.get('role') == 'admin' and claims.get('business_id') != id:
+        return jsonify({"msg": "Unauthorized for this business."}), 403
+
+    business = Business.query.get(id)
+    if not business:
+        return jsonify({"msg": "Business not found"}), 404
+
+    if business.logo_url:
+        delete_cloudinary_image(business.logo_url)
+
+    business.logo_url = None
+    db.session.commit()
+    return jsonify({"msg": "Logo deleted"}), 200
 
 @api.route('/business/<int:id>', methods=['GET'])
 def get_business(id):
