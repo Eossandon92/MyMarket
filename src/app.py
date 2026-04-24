@@ -19,7 +19,10 @@ static_file_dir = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), '../dist/')
 uploads_file_dir = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), 'uploads')
-os.makedirs(uploads_file_dir, exist_ok=True)
+try:
+    os.makedirs(uploads_file_dir, exist_ok=True)
+except OSError:
+    pass # Ignore read-only filesystem error in production
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
