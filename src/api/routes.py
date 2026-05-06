@@ -462,13 +462,15 @@ def fetch_image_for_product(product_name):
                 "hl": "es",
                 "gl": "cl"  # Chile - gets Santa Isabel, Jumbo, Lider results
             }
-            res = requests.get(serp_url, params=params, timeout=15)
+            res = requests.get(serp_url, params=params, timeout=8)  # 8s max (Vercel limit is 10s)
             if res.ok:
                 items = res.json().get('images_results', [])
                 for item in items[:5]:
                     img = item.get('original', '')
                     if img and img.startswith('http') and not any(x in img for x in ['svg', 'gif', 'logo']):
                         return img
+            else:
+                print(f"SerpAPI HTTP {res.status_code}: {res.text[:200]}")
         except Exception as e:
             print(f"SerpAPI failed: {e}")
 
