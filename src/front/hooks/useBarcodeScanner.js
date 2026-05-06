@@ -35,15 +35,17 @@ export function useBarcodeScanner(onScan, { enabled = true } = {}) {
       }
 
       // Solo acumulamos caracteres imprimibles
-      if (e.key.length !== 1) return;
-
+      if (!e || !e.key || e.key.length !== 1) return;
+  
       // Si el tiempo entre teclas es mayor a 50ms, es probablemente tipeo manual.
       // Reiniciamos el buffer para evitar lecturas incorrectas.
-      if (timeDelta > 50 && bufferRef.current.length > 0) {
+      if (timeDelta > 50 && bufferRef.current && bufferRef.current.length > 0) {
         bufferRef.current = "";
       }
-
-      bufferRef.current += e.key;
+  
+      if (bufferRef.current !== undefined) {
+        bufferRef.current += e.key;
+      }
 
       // Timer de limpieza: si en 300ms no llega el Enter, limpiamos el buffer
       if (timerRef.current) clearTimeout(timerRef.current);

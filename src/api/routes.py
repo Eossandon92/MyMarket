@@ -8,14 +8,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_cors import CORS
 from api.utils import generate_sitemap, APIException, encrypt_value
 import os
-import requests
-from bs4 import BeautifulSoup
 from google import genai
 from thefuzz import process, fuzz
 import json
 import io
 import csv
 import openpyxl
+import requests
+import random
+import re
 
 api = Blueprint('api', __name__)
 
@@ -398,34 +399,141 @@ def get_current_user():
 import threading
 
 def fetch_image_for_product(product_name):
-    """Helper function to scrape Bing for an image URL based on a product name."""
+    """Simple and direct image fetcher from Google/Bing."""
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1"
+    ]
+    
+    # Simplify query to 3 words for better results
+    query = "+".join(product_name.split()[:3]) + "+producto"
+    headers = {"User-Agent": random.choice(user_agents)}
+
+    # Open Food Facts - Chile first strategy, sorted by completeness (better images)
+    # Only use 2-3 word variations to avoid cross-brand matches (e.g., "Coca" -> Fanta)
+    words = product_name.split()
+    search_variations = list(dict.fromkeys([
+        product_name,                      # "Coca Cola 3L"
+        " ".join(words[:3]),               # "Coca Cola 3L" (max 3 words)
+        " ".join(words[:2]),               # "Coca Cola"
+    ]))
+
+    def product_matches_query(product, query):
+        """Verify the OFF result actually matches our search query (avoid Fanta for Coca-Cola)."""
+        query_words = set(query.lower().split())
+        # Remove size units and stop words
+        ignore = {'g', 'gr', 'ml', 'kg', 'l', 'lt', 'un', 'cc', 'de', 'la', 'el', 'los', '3l', '2l', '1l'}
+        query_words -= ignore
+        if not query_words: return True
+        # Check ONLY the product name, NOT the brand
+        # (Fanta has brand=Coca-Cola but name=Fanta, so we'd get false matches)
+        product_name_off = (product.get('product_name') or '').lower()
+        matches = sum(1 for w in query_words if w in product_name_off)
+        return matches >= max(1, len(query_words) * 0.6)
+
+    def best_image_from_products(products, query=''):
+        """Sort by completeness, filter by relevance, and return cleanest image URL."""
+        sorted_products = sorted(products, key=lambda p: p.get('completeness', 0), reverse=True)
+        for p in sorted_products[:10]:
+            # Skip if the product doesn't match our query
+            if query and not product_matches_query(p, query):
+                continue
+            img = p.get('image_front_url') or p.get('image_url')
+            if img and img.startswith('http'):
+                if 'openfoodfacts.org' in img:
+                    import re as _re
+                    img_400 = _re.sub(r'\.(\d+)\.jpg$', '.400.jpg', img)
+                    if img_400 != img:
+                        img = img_400
+                return img
+        return None
+
+    # --- 0. BEST: SerpAPI - Google Images (catalog-quality, Chilean retailers) ---
+    serp_key = os.getenv('SERPAPI_KEY')
+    if serp_key:
+        try:
+            serp_url = "https://serpapi.com/search.json"
+            params = {
+                "engine": "google_images",
+                "q": f"{product_name} producto",
+                "safe": "active",
+                "api_key": serp_key,
+                "num": 5,
+                "hl": "es",
+                "gl": "cl"  # Chile - gets Santa Isabel, Jumbo, Lider results
+            }
+            res = requests.get(serp_url, params=params, timeout=15)
+            if res.ok:
+                items = res.json().get('images_results', [])
+                for item in items[:5]:
+                    img = item.get('original', '')
+                    if img and img.startswith('http') and not any(x in img for x in ['svg', 'gif', 'logo']):
+                        return img
+        except Exception as e:
+            print(f"SerpAPI failed: {e}")
+
+    # --- 1. FALLBACK: Chilean Supermarket Catalogs direct scrape ---
+    clean_name = product_name.replace(' ', '+')
+
+    # Try Lider.cl (Walmart Chile) - Scene7 CDN = always white-bg catalog images
     try:
-        search_query = product_name
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
-        }
-        formatted_query = search_query.replace(' ', '+')
-        url = f"https://www.bing.com/images/search?q={formatted_query}"
-        
-        res = requests.get(url, headers=headers)
+        lider_url = f"https://www.lider.cl/supermercado/search?text={clean_name}&pageSize=5&currentPage=0"
+        res = requests.get(lider_url, headers=headers, timeout=8)
         if res.ok:
-            soup = BeautifulSoup(res.text, 'html.parser')
-            a_tags = soup.find_all('a', class_='iusc')
-            for a in a_tags:
-                m_data = a.get('m')
-                if m_data:
-                    try:
-                        data = json.loads(m_data)
-                        image_url = data.get('turl')
-                        if image_url:
-                            return image_url
-                    except:
-                        pass
-                        
-        return f"https://placehold.co/512x512?text={formatted_query}"
-    except Exception as e:
-        print(f"Error scraping image for {product_name}:", e)
-        return "https://placehold.co/512x512?text=Error"
+            lider_imgs = re.findall(r'https://walmart\.scene7\.com/is/image/[^"\s\']+', res.text)
+            if not lider_imgs:
+                lider_imgs = re.findall(r'https://images\.lider\.cl/[^"\s\']+\.(?:jpg|png|webp)', res.text)
+            if lider_imgs:
+                return lider_imgs[0]
+    except: pass
+
+    # Try Jumbo.cl (Cencosud) - vtexassets CDN = product catalog images only
+    try:
+        jumbo_search_url = f"https://www.jumbo.cl/busca/?q={clean_name}"
+        res = requests.get(jumbo_search_url, headers=headers, timeout=8)
+        if res.ok:
+            jumbo_imgs = re.findall(r'https://[^"\s\']*vtexassets\.com/arquivos/ids/[^"\s\']+\.(?:jpg|png|webp)', res.text)
+            if jumbo_imgs:
+                return jumbo_imgs[0]
+    except: pass
+
+    for q_var in search_variations:
+        # Step 1: Chilean database first (cl.openfoodfacts.org)
+        try:
+            off_url = f"https://cl.openfoodfacts.org/cgi/search.pl?search_terms={q_var}&search_simple=1&action=process&json=1&page_size=10"
+            res = requests.get(off_url, headers=headers, timeout=8)
+            if res.ok:
+                products = res.json().get('products', [])
+                img = best_image_from_products(products)
+                if img: return img
+        except:
+            pass
+
+        # Step 2: Global database filtered by Chile
+        try:
+            off_url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={q_var}&tagtype_0=countries&tag_contains_0=contains&tag_0=chile&search_simple=1&action=process&json=1&page_size=10"
+            res = requests.get(off_url, headers=headers, timeout=8)
+            if res.ok:
+                products = res.json().get('products', [])
+                img = best_image_from_products(products, q_var)
+                if img: return img
+        except:
+            pass
+
+    # Step 3: Global fallback (any country) for very common products
+    for q_var in search_variations:
+        try:
+            off_url = f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={q_var}&search_simple=1&action=process&json=1&page_size=10"
+            res = requests.get(off_url, headers=headers, timeout=8)
+            if res.ok:
+                products = res.json().get('products', [])
+                img = best_image_from_products(products, q_var)
+                if img: return img
+        except:
+            pass
+
+    # Absolute Fallback: Safe placeholder with product name
+    return f"https://placehold.co/512x512?text={product_name.replace(' ', '+')}"
 
 
 def process_images_in_background(app_context, products_data):
